@@ -19,6 +19,60 @@ using namespace std;
 //declaration of the functions.
 
 
+//CLASS FOR THE MATRIX.
+
+class KalmanFilter {
+public:
+    // State transition matrix
+     double A;
+     TMatrixD A_1;
+    // Measurement matrix
+    double H;
+    TMatrixD H_1;
+    // Process noise covariance
+    double Q;
+    TMatrixD Q_1;
+    // Measurement noise covariance
+    double R;
+    TMatrixD R_1;
+    // Estimate error covariance
+    double P;
+    TMatrixD P_1;
+    // State estimate
+    double x;
+    TMatrixD X_1;
+
+   //Identity matrix
+    Double_t  I;
+    TMatrixD I_1;
+
+    KalmanFilter(double A, double H, double Q, double R, double P, double x,double I) {
+
+	
+        this->A = A;
+        this->H = H;
+        this->Q = Q;
+        this->R = R;
+        this->P = P;
+        this->x = x;
+    }
+
+	double update(double measurement) {
+        // Predict
+        double x_pred = A * x;
+        double P_pred = A * P * A + Q;
+
+        // Update
+        double K = P_pred * H / (H * P_pred * H + R);
+        x = x_pred + K * (measurement - H * x_pred);
+        P = (I - K * H) * P_pred;
+
+        return x;
+    }
+};
+
+
+
 //Function for the stopping power .
 void energyloss(std::string file, TGraph* eLossCurve){
 
@@ -291,7 +345,7 @@ void kalman(){
 	Double_t sum1 = 0.0, mean1, standardDeviation1 = 0.0,st1,variance1;
 	Double_t sum2 = 0.0, mean2, standardDeviation2 = 0.0,st2,variance2;
 
-	Double_t P_n[n],I_vx[n],K_G[n];
+	Double_t P_n[n],I_vx[n],K_G[n],measurement[10],estimate[10];
 	Double_t P_ny[n],I_vy[n],K_G1[n];
 	Double_t P_nz[n],I_vz[n],K_G2[n];
 
@@ -320,15 +374,33 @@ void kalman(){
 	variance2 = st2*st2;
 
 	//Initial predicted values of the current states
-	I_vx[0] = vx[0];
-	I_vy[0] = vy[0];
-	I_vz[0] = vz[0];
+	I_vx[0] = 0;
+	I_vy[0] = 0;
+	I_vz[0] = 0;
 
 	//std::cout<< I_vx[0] <<" " <<mean2 <<endl;
 	P_n[0] =variance*variance;  
 	P_ny[0] = variance1*variance1;
 	P_nz[0] = variance2*variance2;
 
+
+
+	std::cout<<P_n[0];
+	KalmanFilter kf(1, 1, 0.1, 1, 1, 0,1);
+	for (int i = 1; i <= 10; i++) {
+	//double measurement = sin(i / 2.0);
+	measurement[i] = vx[i];
+	Double_t measurement1 = vy[i];
+	Double_t measurement2 = vz[i];
+	estimate[i] = kf.update(measurement[i]);
+	//Double_t est
+	cout << "measurement: " << measurement[i] << ", estimate: " << estimate[i] << endl;
+	}
+
+	return 0;
+
+
+/*
 	for(Int_t i = 0; i<n-1; i++){
 		I_vx[i] = I_vx[i]+t[i];
 		I_vy[i] = I_vy[i]+t[i];
@@ -366,24 +438,25 @@ void kalman(){
 	
 
 
-
+*/
+/*
   c1->cd(1);
   auto r1=new TGraph2D(n,I_vx,I_vy,I_vz);
   r1->SetTitle("Particle motion; X axis;Y axis; Z axis");
 //  gStyle->SetPalette(1);
 //  gr1->SetMarkerStyle(20);
   r1->Draw(" LINE");
-
+*/
 
    c1->cd(2);
 
-   TGraph *gr1 = new TGraph (n, I_vz,I_vy);
+   TGraph *gr1 = new TGraph (10, t,estimate);
    gr1->GetXaxis()->SetTitle("vz position");
    gr1->GetYaxis()->SetTitle("vy Position");
    gr1->GetXaxis()->CenterTitle();
    gr1->GetYaxis()->CenterTitle();
    gr1->Draw("AL");
-
+/*
  c1->cd(3);
 
    TGraph *g = new TGraph (n, vz,vy);
@@ -392,7 +465,7 @@ void kalman(){
    g->GetXaxis()->CenterTitle();
    g->GetYaxis()->CenterTitle();
    g->Draw("AL");
-/*
+
  c1->cd(4);
 
    TGraph *gn = new TGraph (n, vx,vy);
