@@ -19,60 +19,6 @@ using namespace std;
 //declaration of the functions.
 
 
-//CLASS FOR THE MATRIX.
-
-class KalmanFilter {
-public:
-    // State transition matrix
-     double A;
-     TMatrixD A_1;
-    // Measurement matrix
-    double H;
-    TMatrixD H_1;
-    // Process noise covariance
-    double Q;
-    TMatrixD Q_1;
-    // Measurement noise covariance
-    double R;
-    TMatrixD R_1;
-    // Estimate error covariance
-    double P;
-    TMatrixD P_1;
-    // State estimate
-    double x;
-    TMatrixD X_1;
-
-   //Identity matrix
-    Double_t  I;
-    TMatrixD I_1;
-
-    KalmanFilter(double A, double H, double Q, double R, double P, double x,double I) {
-
-	
-        this->A = A;
-        this->H = H;
-        this->Q = Q;
-        this->R = R;
-        this->P = P;
-        this->x = x;
-    }
-
-	double update(double measurement) {
-        // Predict
-        double x_pred = A * x;
-        double P_pred = A * P * A + Q;
-
-        // Update
-        double K = P_pred * H / (H * P_pred * H + R);
-        x = x_pred + K * (measurement - H * x_pred);
-        P = (I - K * H) * P_pred;
-
-        return x;
-    }
-};
-
-
-
 //Function for the stopping power .
 void energyloss(std::string file, TGraph* eLossCurve){
 
@@ -339,7 +285,66 @@ void kalman(){
 //	TGraph* gr = new TGraph(100,p,s);
   //      gr->Draw();
 
-	// start kalman filter. 
+	// For starting  kalman filter.
+
+	//DEfine all matrices
+
+        TMatrixD A_1(3,3);      //state transition matrix.
+//        TMatrixD B_1(2,1);	
+        TMatrixD X_1(3,1);	//State Estimate matrix.
+        TMatrixD Y_1(3,1);	//Observation matrix or measurements.
+        TMatrixD H_1(3,3);	//Measurement matrix
+        TMatrixD R_1(3,3);	//Measurement Noise covariance.
+        TMatrixD C_1(3,3);	
+        TMatrixD ax_1(3,1);	
+        TMatrixD P_1(3,3);	//Estimate Error Covariance
+        TMatrixD Q_1(3,3);	//Process Noise Covariance.
+        TMatrixD I_1(3,3);	//Identity matrix.
+
+        //kalman storage
+        TMatrixD x_pred(3,1);
+        TMatrixD P_pred(3,3);
+        TMatrixD K(3,3);	//Kalman Gain.
+        TMatrixD Z(3,1);
+ 
+	//filling the matrices
+        Double_t Matrix_A[9] = {1,0,0,0,1,0,0,0,1};
+        A_1.Use(A_1.GetNrows(), A_1.GetNcols(), Matrix_A);
+
+  //      Double_t Matrix_B[2] = {0.5*TMath::Power(dt,2),dt};
+    //    B_1.Use(B_1.GetNrows(), B_1.GetNcols(), Matrix_B);
+
+	// Initial predicted state
+	Double_t vx_1[n],vy_1[n],vz_1[n];
+	vx_1[0] = vx[0];
+	vy_1[0] = vy[0];
+	vz_1[0] = vz[0]; 
+
+        Double_t Matrix_X[3] = {vx_1[0],vy_1[0],vz_1[0]};
+        X_1.Use(X_1.GetNrows(), X_1.GetNcols(), Matrix_X);
+
+
+        Double_t Matrix_Y[3] ;
+        Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
+
+        Double_t Matrix_H[9] = {1,0,0,0,1,0,0,0,1} ;
+        H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
+
+        Double_t Matrix_R[9] ={0.001,0,0,0,0.001,0,0,0,0.001};
+        R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
+
+        Double_t Matrix_C[9] = {1,0,0,0,1,0,0,0,1};
+        C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
+
+        Double_t I[9]  = {1,0,0,0,1,0,0,0,1};
+        I_1.Use(I_1.GetNrows(), I_1.GetNcols(), I);
+	
+	Double_t Matrix_Q[9] = {0,0,0,0,0,0,0,0,0};
+        Q_1.Use(Q_1.GetNrows(), Q_1.GetNcols(), Matrix_Q);
+
+
+
+
 
 	Double_t sum = 0.0, mean, standardDeviation = 0.0,st,variance;
 	Double_t sum1 = 0.0, mean1, standardDeviation1 = 0.0,st1,variance1;
@@ -373,72 +378,52 @@ void kalman(){
 	variance1 = st1*st1;
 	variance2 = st2*st2;
 
-	//Initial predicted values of the current states
-	I_vx[0] = 0;
-	I_vy[0] = 0;
-	I_vz[0] = 0;
+
 
 	//std::cout<< I_vx[0] <<" " <<mean2 <<endl;
 	P_n[0] =variance*variance;  
 	P_ny[0] = variance1*variance1;
 	P_nz[0] = variance2*variance2;
 
+	Double_t Matrix_P[9] = {P_n[0],0,0,0,P_ny[0],0,0,0,P_nz[0]} ; // generated errors.
+        P_1.Use(P_1.GetNrows(), P_1.GetNcols(), Matrix_P);
 
 
-	std::cout<<P_n[0];
-	KalmanFilter kf(1, 1, 0.1, 1, 1, 0,1);
-	for (int i = 1; i <= 10; i++) {
-	//double measurement = sin(i / 2.0);
-	measurement[i] = vx[i];
-	Double_t measurement1 = vy[i];
-	Double_t measurement2 = vz[i];
-	estimate[i] = kf.update(measurement[i]);
-	//Double_t est
-	cout << "measurement: " << measurement[i] << ", estimate: " << estimate[i] << endl;
-	}
+	for(Int_t i=0; i<1; i++){
 
-	return 0;
+        Double_t Matrix_Y[3] = {vx[i],vy[i],vz[i]};
+        Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
+
+        //start kalman
+
+        x_pred = (A_1 * X_1) ;//+( (B_1*ax) + Q) ;
+        P_pred =  (A_1 *TMatrixD(P_1, TMatrixD::kMultTranspose,A_1))  + Q_1;
 
 
-/*
-	for(Int_t i = 0; i<n-1; i++){
-		I_vx[i] = I_vx[i]+t[i];
-		I_vy[i] = I_vy[i]+t[i];
-		I_vz[i] = I_vz[i]+t[i];
+        //updates
 
-		P_n[i] = P_n[i] ;
-		P_ny[i] = P_ny[i];
-		P_nz[i] = P_nz[i];
+        K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
 
-		//calculate the kalman gain.
-		K_G[i] = P_n[i] / (P_n[i]+variance);
-		K_G1[i] = P_ny[i] / (P_ny[i]+variance1);
-		K_G2[i] = P_nz[i] / (P_nz[i]+variance2);
+        Z = C_1*Y_1;
+        X_1 = x_pred + (K *(Z-(H_1*x_pred)));
+        P_1 =(I_1-K*H_1)*P_pred;
 
-		//The estimate of the current states.
-		I_vx[i] = I_vx[i] + K_G[i]*(vx[i] -I_vx[i]);
-		I_vy[i] = I_vy[i] + K_G1[i]*(vy[i] -I_vy[i]);
-		I_vz[i] = I_vz[i] + K_G2[i]*(vz[i] -I_vz[i]);
+        //x_pred.Print();
+        //Z.Print();
+        //std::cout<< z[n] << " " << x_pred << std::endl;
+        }
 
 
-		P_n[i] = (1-K_G[i])*P_n[i];
-		P_ny[i] = (1-K_G1[i])*P_ny[i];
-		P_nz[i] = (1-K_G2[i])*P_nz[i];
-
-		P_n[i+1] =P_n[i];
-		P_ny[i+1] =P_ny[i];
-		P_nz[i+1] =P_nz[i];
-
-		I_vx[i+1] = I_vx[i];
-		I_vy[i+1] = I_vy[i];
-		I_vz[i+1] = I_vz[i];
-
-	//std::cout<<vz[i]<< " "<< I_vz[i]<<endl;
-	}
+        P_pred.Print();
+        K.Print();
 	
 
 
-*/
+
+	return 0;
+	
+
+
 /*
   c1->cd(1);
   auto r1=new TGraph2D(n,I_vx,I_vy,I_vz);
