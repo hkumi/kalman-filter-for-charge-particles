@@ -183,15 +183,15 @@ void kalman(){
         c1->Divide(2,2);
 
         const Int_t n = 1000;
-	Double_t m = 6.64*TMath::Power(10,-27);
+	//Double_t m = 6.64*TMath::Power(10,-27);
 	Int_t v = 1;
 	Double_t t[n],vx[n],vy[n],vz[n],c,beta,gamma;
 	Double_t x[n],y[n],z[n];
 	c = 2.99792*TMath::Power(10,8);
 	gamma =1/TMath::Sqrt(1-TMath::Power(v/c,2));
-	Double_t F1,F2,F3,F4=0.0;
-        Double_t G1,G2,G3,G4=0.0;
-	Double_t L1,L2,L3,L4=0.0;
+	Double_t F1[n],F2[n],F3[n],F4[n];
+        Double_t G1[n],G2[n],G3[n],G4[n];
+	Double_t L1[n],L2[n],L3[n],L4[n];
 	Double_t theta,phi;         // Using spherical coordinates.
         theta=2.83135;
 	phi=-1.41593;
@@ -222,25 +222,25 @@ void kalman(){
 
 	for(Int_t i=0;i <n-1;  i++){
   //       std::cout<<vx[i] << " "<<vy[i]<< " " <<vz[i]<<std::endl;
-          F1 = dxdt(t[i],vx[i],vy[i],vz[i],s[i]);
-          G1 = dydt(t[i],vx[i],vy[i],vz[i],s[i]);
-	  L1 = dzdt(t[i],vx[i],vy[i],vz[i],s[i]);
+          F1[i] = dxdt(t[i],vx[i],vy[i],vz[i],s[i]);
+          G1[i] = dydt(t[i],vx[i],vy[i],vz[i],s[i]);
+	  L1[i] = dzdt(t[i],vx[i],vy[i],vz[i],s[i]);
 
-          F2=  dxdt(t[i]+h*0.5,vx[i]+0.5*h*F1,vy[i]+G1*h*0.5,vz[i]+0.5*h*L1,s[i]);
-          G2=  dydt(t[i]+h*0.5,vx[i]+F1*h*0.5,vy[i]+G1*h*0.5,vz[i]+0.5*h*L1,s[i]);
-	  L2=  dzdt(t[i]+h*0.5,vx[i]+F1*h*0.5,vy[i]+G1*h*0.5,vz[i]+0.5*h*L1,s[i]);
+          F2[i] = dxdt(t[i]+h*0.5,vx[i]+0.5*h*F1[i],vy[i]+G1[i]*h*0.5,vz[i]+0.5*h*L1[i],s[i]);
+          G2[i] = dydt(t[i]+h*0.5,vx[i]+F1[i]*h*0.5,vy[i]+G1[i]*h*0.5,vz[i]+0.5*h*L1[i],s[i]);
+	  L2[i] = dzdt(t[i]+h*0.5,vx[i]+F1[i]*h*0.5,vy[i]+G1[i]*h*0.5,vz[i]+0.5*h*L1[i],s[i]);
 
-          F3=  dxdt(t[i]+h*0.5,vx[i]+F2*h*0.5,vy[i]+G2*h*0.5, vz[i]+0.5*h*L2,s[i]);
-          G3=  dydt(t[i]+h*0.5,vx[i]+F2*h*0.5,vy[i]+G2*h*0.5, vz[i]+0.5*h*L2,s[i]);
-	  L3=  dzdt(t[i]+h*0.5,vx[i]+F2*h*0.5,vy[i]+G2*h*0.5, vz[i]+0.5*h*L2,s[i]);
+          F3[i] = dxdt(t[i]+h*0.5,vx[i]+F2[i]*h*0.5,vy[i]+G2[i]*h*0.5, vz[i]+0.5*h*L2[i],s[i]);
+          G3[i] = dydt(t[i]+h*0.5,vx[i]+F2[i]*h*0.5,vy[i]+G2[i]*h*0.5, vz[i]+0.5*h*L2[i],s[i]);
+	  L3[i] = dzdt(t[i]+h*0.5,vx[i]+F2[i]*h*0.5,vy[i]+G2[i]*h*0.5, vz[i]+0.5*h*L2[i],s[i]);
 
-          F4=  dxdt(t[i]+h,vx[i]+F3*h,vy[i]+h*G3,vz[i]+h*L3,s[i]);
-          G4=  dydt(t[i]+h,vx[i]+h*F3,vy[i]+h*G3,vz[i]+h*L3,s[i]);
-	  L4=  dzdt(t[i]+h,vx[i]+F3*h,vy[i]+G3*h,vz[i]+h*L3,s[i]);
+          F4[i] = dxdt(t[i]+h,vx[i]+F3[i]*h,vy[i]+h*G3[i],vz[i]+h*L3[i],s[i]);
+          G4[i] = dydt(t[i]+h,vx[i]+h*F3[i],vy[i]+h*G3[i],vz[i]+h*L3[i],s[i]);
+	  L4[i] = dzdt(t[i]+h,vx[i]+F3[i]*h,vy[i]+G3[i]*h,vz[i]+h*L3[i],s[i]);
 
-          vx[i+1] = vx[i] + h/6 *( F1 + 2*F2 + 2*F3 + F4);
-          vy[i+1]  = vy[i] + h/6 *( G1 + 2*G2 + 2*G3 + G4);
-	  vz[i+1]  = vz[i] + h/6 *( L1 + 2*L2 + 2*L3 + L4);
+          vx[i+1] = vx[i] + h/6 *( F1[i] + 2*F2[i] + 2*F3[i] + F4[i]);
+          vy[i+1]  = vy[i] + h/6 *( G1[i] + 2*G2[i] + 2*G3[i] + G4[i]);
+	  vz[i+1]  = vz[i] + h/6 *( L1[i] + 2*L2[i] + 2*L3[i] + L4[i]);
           t[i+1]= t[i] + h;
 
 
@@ -287,10 +287,26 @@ void kalman(){
 
 	// For starting  kalman filter.
 
+	//sytem parameters.
+
+	Double_t Ex,Ey,Ez,f3;              //Electric field in V/m. 
+        Double_t Bx,By,Bz,m1;              // magnetic field in Tesla
+        Double_t q = 3.2*pow(10,-19);   //charge of the particle in eV
+        Double_t B=2.0;                 // Applied magnetic field. 
+        Double_t m = 6.64*TMath::Power(10,-27);  // mass of the particle in kg
+        Double_t E = TMath::Cos((q*B)/m) * 500 ; 
+        Bx = 0;                      // magnetic field in x and y  direction in Tesla.
+        By = 0;
+        Bz = B;          // magnetic field in the z direction in Tesla.
+        Ex = 0;                      // Electric field in the x and  direction in V/m. 
+        Ey = 0;
+        Ez = -E; 
+	m1=q/m;
 	//DEfine all matrices
 
-        TMatrixD A_1(3,3);      //state transition matrix.
-//        TMatrixD B_1(2,1);	
+        TMatrixD F_1(3,3);      //state transition matrix.
+        TMatrixD G_1(3,1);	
+	TMatrixD U_1(3,1);  
         TMatrixD X_1(3,1);	//State Estimate matrix.
         TMatrixD Y_1(3,1);	//Observation matrix or measurements.
         TMatrixD H_1(3,3);	//Measurement matrix
@@ -308,17 +324,20 @@ void kalman(){
         TMatrixD Z(3,1);
  
 	//filling the matrices
-        Double_t Matrix_A[9] = {1,0,0,0,1,0,0,0,1};
-        A_1.Use(A_1.GetNrows(), A_1.GetNcols(), Matrix_A);
+        Double_t Matrix_F[9] = {0,m1*Bz,m1*By,m1*-Bz,0,m1*Bx,m1*By,m1*Bx,0};
+        F_1.Use(F_1.GetNrows(), F_1.GetNcols(), Matrix_F);
 
-  //      Double_t Matrix_B[2] = {0.5*TMath::Power(dt,2),dt};
-    //    B_1.Use(B_1.GetNrows(), B_1.GetNcols(), Matrix_B);
+        Double_t Matrix_G[3] = {1,1,1};
+        G_1.Use(G_1.GetNrows(), G_1.GetNcols(), Matrix_G);
+
+	Double_t Matrix_U[3] = {m1*Ex,m1*Ey,m1*Ez};
+        U_1.Use(U_1.GetNrows(), U_1.GetNcols(), Matrix_U);
 
 	// Initial predicted state
 	Double_t vx_1[n],vy_1[n],vz_1[n];
-	vx_1[0] = vx[0];
-	vy_1[0] = vy[0];
-	vz_1[0] = vz[0]; 
+	vx_1[0] = 0;
+	vy_1[0] = 0;
+	vz_1[0] = 0; 
 
         Double_t Matrix_X[3] = {vx_1[0],vy_1[0],vz_1[0]};
         X_1.Use(X_1.GetNrows(), X_1.GetNcols(), Matrix_X);
@@ -330,8 +349,6 @@ void kalman(){
         Double_t Matrix_H[9] = {1,0,0,0,1,0,0,0,1} ;
         H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
 
-        Double_t Matrix_R[9] ={0.001,0,0,0,0.001,0,0,0,0.001};
-        R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
 
         Double_t Matrix_C[9] = {1,0,0,0,1,0,0,0,1};
         C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
@@ -345,10 +362,10 @@ void kalman(){
 
 
 
-
-	Double_t sum = 0.0, mean, standardDeviation = 0.0,st,variance;
-	Double_t sum1 = 0.0, mean1, standardDeviation1 = 0.0,st1,variance1;
-	Double_t sum2 = 0.0, mean2, standardDeviation2 = 0.0,st2,variance2;
+	//Calculating the variance of the process and measured moise. 
+	Double_t sum=0.0  ,mean, standardDeviation=0.0,st,variance,covariance;
+	Double_t sum1=0.0 , mean1, standardDeviation1=0.0,st1,variance1,covariance1;
+	Double_t sum2=0.0, mean2, standardDeviation2=0.0,st2,variance2,covariance2;
 
 	Double_t P_n[n],I_vx[n],K_G[n],measurement[10],estimate[10];
 	Double_t P_ny[n],I_vy[n],K_G1[n];
@@ -364,7 +381,7 @@ void kalman(){
 	mean1 = sum1/n-1;
 	mean2 = sum2/n-1;
 
-	for(Int_t i = 0; i < 10; ++i) {
+	for(Int_t i = 0; i < n; ++i) {
 		standardDeviation += pow(vx[i] - mean, 2);
 		standardDeviation1 += pow(vy[i] - mean1,2);
 		standardDeviation2 += pow(vz[i] - mean2,2);
@@ -379,28 +396,70 @@ void kalman(){
 	variance2 = st2*st2;
 
 
+	P_n[0] =variance*variance;  
+        P_ny[0] = variance1*variance1;
+        P_nz[0] = variance2*variance2;
+
+        Double_t r_x[n],r_y[n],r_z[n];
+        r_x[0] = variance;
+        r_y[0] = variance1;
+        r_z[0] = variance2;
+
+
 
 	//std::cout<< I_vx[0] <<" " <<mean2 <<endl;
-	P_n[0] =variance*variance;  
-	P_ny[0] = variance1*variance1;
-	P_nz[0] = variance2*variance2;
+	//Calculating the covariance between vx,vy and vz. 
 
-	Double_t Matrix_P[9] = {P_n[0],0,0,0,P_ny[0],0,0,0,P_nz[0]} ; // generated errors.
+	 for(Int_t i = 0; i < n-1; ++i) {
+                sum += vx[i];
+                sum1 += vy[i];
+                sum2 += vz[i];
+        }
+
+        mean = sum / n-1;
+        mean1 = sum1/n-1;
+        mean2 = sum2/n-1;
+
+        for(Int_t i = 0; i < n; ++i) {
+                standardDeviation += (vx[i] - mean)* (vy[i] - mean1);
+                standardDeviation1 += (vx[i] - mean)* (vz[i] - mean2);
+                standardDeviation2 += (vy[i] - mean)* (vz[i] - mean1);;
+        }
+
+        covariance = (standardDeviation / n-1);
+        covariance1 = (standardDeviation1 / n-1);
+        covariance2 = (standardDeviation2 / n-1);
+
+
+
+        P_n[0] =covariance;  
+        P_ny[0] = covariance1;
+        P_nz[0] = covariance2;
+
+	std::cout<<r_x[0]<<" "<<P_n[0]<<std::endl;
+
+
+
+	Double_t Matrix_P[9] = {r_x[0],P_n[0],P_ny[0],P_n[0],r_y[0],P_nz[0],P_ny[0],P_nz[0],r_z[0]} ; // generated errors.
         P_1.Use(P_1.GetNrows(), P_1.GetNcols(), Matrix_P);
 
+	Double_t Matrix_R[9] ={r_x[0],0,0,0,r_y[0],0,0,0,r_z[0]};          // Error in measurements.
+        R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
 
-	for(Int_t i=0; i<1; i++){
+	for(Int_t i=0; i<n; i++){
 
         Double_t Matrix_Y[3] = {vx[i],vy[i],vz[i]};
         Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
 
         //start kalman
 
-        x_pred = (A_1 * X_1) ;//+( (B_1*ax) + Q) ;
-        P_pred =  (A_1 *TMatrixD(P_1, TMatrixD::kMultTranspose,A_1))  + Q_1;
+        x_pred = (F_1 * X_1) ;//+ (B_1*U_1) ;
+        P_pred =  (F_1 *TMatrixD(P_1, TMatrixD::kMultTranspose,F_1))  + Q_1;
 
 
         //updates
+
+
 
         K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
 
@@ -414,8 +473,8 @@ void kalman(){
         }
 
 
-        P_pred.Print();
-        K.Print();
+        R_1.Print();
+        P_1.Print();
 	
 
 
@@ -435,12 +494,13 @@ void kalman(){
 
    c1->cd(2);
 
-   TGraph *gr1 = new TGraph (10, t,estimate);
-   gr1->GetXaxis()->SetTitle("vz position");
-   gr1->GetYaxis()->SetTitle("vy Position");
-   gr1->GetXaxis()->CenterTitle();
-   gr1->GetYaxis()->CenterTitle();
-   gr1->Draw("AL");
+      X_1.DrawClone("colz");
+//   TGraph *gr1 = new TGraph (n, X_1(0,0),Z(0,0));
+//   gr1->GetXaxis()->SetTitle("vz position");
+  // gr1->GetYaxis()->SetTitle("vy Position");
+  // gr1->GetXaxis()->CenterTitle();
+   //gr1->GetYaxis()->CenterTitle();
+   //gr1->Draw("AL");
 /*
  c1->cd(3);
 
