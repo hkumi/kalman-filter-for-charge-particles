@@ -163,17 +163,18 @@ double  dzdt(double t,double vx, double vy,Double_t vz, Double_t s){
 
 //  Functions for positions. 
 
-Double_t fx(Double_t x, Double_t y, Double_t vx,Double_t vy, Double_t vz){
+Double_t fx( Double_t vx,Double_t vy, Double_t vz){
         return vx/vz;
         }
 
-Double_t fy(Double_t x, Double_t y,Double_t vx,Double_t vy, Double_t vz){
+Double_t fy(Double_t vx,Double_t vy, Double_t vz){
         return vy/vz;
         }
 
-Double_t  dt_xdz(Double_t x, Double_t y,Double_t vx, Double_t vy, Double_t vz){
-	Double_t k,q,p,tx,ty,Bz,By,Bx,dt;
-	k = 0.2;
+Double_t  dt_xdz(Double_t vx, Double_t vy, Double_t vz){
+	Double_t k,q,p,tx,ty,Bz,By,Bx,dt1;
+	k = pow(2.9979248,17);
+	Double_t m = 6.64*TMath::Power(10,-27);  // mass of the particle in kg
 	q = 3.2*pow(10,-19);   //charge of the particle in eV
 	p= 1.0;
 	Double_t B=2.0;                 // Applied magnetic field.
@@ -183,16 +184,17 @@ Double_t  dt_xdz(Double_t x, Double_t y,Double_t vx, Double_t vy, Double_t vz){
 	tx = vx/vz;
 	ty = vy/vz;
 
-	dt = k*(q/p)*TMath::Sqrt(pow(tx,2)+pow(ty,2)+1)*(ty*Bz-(1+pow(tx,2))*By+tx*ty*By);
+	dt1 = k*(q/m*vx)*TMath::Sqrt(pow(tx,2)+pow(ty,2)+1)*(ty*Bz-(1+pow(tx,2))*By+tx*ty*By);
 
-        return dt;
+        return dt1;
         }
 
 
-Double_t  dt_ydz(Doule_t x, Double_t y, Double_t vx, Double_t vy, Double_t vz){
+Double_t  dt_ydz(Double_t vx, Double_t vy, Double_t vz){
         Double_t k,q,p,tx,ty,Bz,By,Bx,dt;
-        k = 0.2;
+        k = pow(2.9979248,17);
         q = 3.2*pow(10,-19);   //charge of the particle in eV
+	Double_t m = 6.64*TMath::Power(10,-27);  // mass of the particle in kg
         p= 1.0;
         Double_t B=2.0;                 // Applied magnetic field.
         Bx = 0;                      // magnetic field in x and y  direction in Tesla.
@@ -201,7 +203,7 @@ Double_t  dt_ydz(Doule_t x, Double_t y, Double_t vx, Double_t vy, Double_t vz){
         tx = vx/vz;
         ty = vy/vz;
 
-        dt = k*(q/p)*TMath::Sqrt(pow(tx,2)+pow(ty,2)+1)*(-tx*Bz-(1+pow(ty,2))*Bx-tx*ty*By);
+        dt = k*(q/m*vy)*TMath::Sqrt(pow(tx,2)+pow(ty,2)+1)*(-tx*Bz-(1+pow(ty,2))*Bx-tx*ty*By);
 
         return dt;
         }
@@ -218,7 +220,7 @@ void kalman(){
 	Double_t m = 6.64*TMath::Power(10,-27);
 	Int_t v = 1;
 	Double_t t[n],vx[n],vy[n],vz[n],c,beta,gamma;
-	Double_t x[n],y[n],z[n];
+	Double_t x[n],y[n],z[n],z0,zf;
 	c = 2.99792*TMath::Power(10,8);
 	gamma =1/TMath::Sqrt(1-TMath::Power(v/c,2));
 	Double_t F1[n],F2[n],F3[n],F4[n];
@@ -231,18 +233,26 @@ void kalman(){
 //Initial Conditions
 
         t[0]=0.0003;
-        vx[0]= gamma*c*TMath::Sin(theta/180*M_PI)*TMath::Cos(phi/180*M_PI);
+        //vx[0]= gamma*c*TMath::Sin(theta/180*M_PI)*TMath::Cos(phi/180*M_PI);
 	//vx[0] = 1.0;
 	//vy[0] = 1.0;
 	//vz[0] = 1.0;
 	double tf=8.18*TMath::Power(10,-7);
 	double t0=0.0;
+
+
+
         vy[0]=gamma*c*TMath::Sin(theta/180*M_PI)*TMath::Sin(phi/180*M_PI);
 	vz[0]=gamma*c*TMath::Cos(theta/180*M_PI);
-	Double_t  h=(tf-t0)/n;                             // step_size in seconds
-	x[0] = vx[0] ;
-	y[0] = vy[0];
-	z[0] = vz[0];
+	Double_t  h=(tf-t0)/n;
+                             // step_size in seconds
+	x[0] = 0.000001;
+	y[0] = 0.000001;
+	z[0] = 0.000001;
+
+	z0 = 0.000001;
+	zf = 20.0;
+	Double_t h_z = (zf-z0)/n;
 	//Graph to evaluate Energy loss
 	Double_t  gasMediumDensity_ = 0.0153236;   //g/cm3
 	Double_t p[n],s[n],vv[n],bet[n],gamma1[n],Energy[n];
@@ -254,6 +264,7 @@ void kalman(){
 
 	std::cout<<x[0] << " " << y[0] << " " << z[0] << std::endl;
 	//Start Rk4. 
+/*
 
 	for(Int_t i=0;i <n-1;  i++){
   //       std::cout<<vx[i] << " "<<vy[i]<< " " <<vz[i]<<std::endl;
@@ -286,7 +297,7 @@ void kalman(){
           t[i] = t[i+1];
 
 	  //std::cout<<vx[i]<<endl;
-/*
+
 
 	  vv[i] = TMath::Sqrt(TMath::Power(vx[i],2)+TMath::Power(vy[i],2)+TMath::Power(vz[i],2));
           bet[i] = vv[i]/c;
@@ -317,9 +328,11 @@ void kalman(){
          // std::cout<<" Energy (Curves) : "<<s[i]<<" - dE/dx :     "<<" - dE/dx (density) :"<<Energy[i]<<"\n";
 
           //if(elossfile->eof()) break;
-*/
+
 
         }
+*/
+
 //	TGraph* gr = new TGraph(100,p,s);
   //      gr->Draw();
 	//RK4 for tracking the position of the particle.
@@ -330,38 +343,46 @@ void kalman(){
 
 	for(Int_t i=0;i <n-1;  i++){
   //       std::cout<<vx[i] << " "<<vy[i]<< " " <<vz[i]<<std::endl;
-          K1[i] = fx(x[i],y[i],vx[i],vy[i],vz[i]);
-          M1[i] = fy(x[i],y[i],vx[i],vy[i],vz[i]);
-          H1[i] = dt_xdz(x[i],y[i],vx[i],vy[i],vz[i]);
-	  N1[i] = dt_ydz(x[i],y[i],z[i],vx[i],vy[i],vz[i]);
+          K1[i] = fx(x[i],y[i],z[i]);
+          M1[i] = fy(x[i],y[i],z[i]);
+          H1[i] = dt_xdz(vx[i],vy[i],vz[i]);
+	  N1[i] = dt_ydz(vx[i],vy[i],vz[i]);
 
-          K2[i] = fx(x[i]+0.5*h*K1[i],y[i]+M1[i]*h*0.5,z[i]+0.5*h*H1[i]);
-          M2[i] = fy(x[i]+K1[i]*h*0.5,y[i]+M1[i]*h*0.5,z[i]+0.5*h*H1[i]);
-          H2[i] = dt_xdz(x[i]+0.5*h*K1[i],y[i]+M1[i]*h*0.5,z[i]+0.5*h*H1[i]);
-	  N2[i] = dt_ydz(x[i]+0.5*h*K1[i],y[i]+M1[i]*h*0.5,z[i]+0.5*h*H1[i]);
+          K2[i] = fx(x[i]+0.5*h_z*K1[i],y[i]+M1[i]*h_z*0.5,z[i]+0.5*h_z);
+          M2[i] = fy(x[i]+K1[i]*h_z*0.5,y[i]+M1[i]*h_z*0.5,z[i]+0.5*h_z);
+          H2[i] = dt_xdz(vx[i]+0.5*h_z*H1[i],vy[i]+N1[i]*h_z*0.5,vz[i]+0.5*h_z);
+	  N2[i] = dt_ydz(vx[i]+0.5*h_z*H1[i],vy[i]+N1[i]*h_z*0.5,vz[i]+0.5*h_z);
 
-          K3[i] = fx(x[i]+K2[i]*h*0.5, y[i]+M2[i]*h*0.5,z[i]+0.5*h*H2[i]);
-          M3[i] = fy(x[i]+K2[i]*h*0.5,y[i]+M2[i]*h*0.5,z[i]+0.5*h*H2[i]);
-          H3[i] = dt_xdz(x[i]+0.5*h*K2[i],y[i]+M2[i]*h*0.5,z[i]+0.5*h*H2[i]);
-	  N3[i] = dt_ydz(x[i]+0.5*h*K2[i],y[i]+M2[i]*h*0.5,z[i]+0.5*h*H2[i]);
+          K3[i] = fx(x[i]+K2[i]*h_z*0.5, y[i]+M2[i]*h_z*0.5,z[i]+0.5*h_z);
+          M3[i] = fy(x[i]+K2[i]*h_z*0.5,y[i]+M2[i]*h_z*0.5,z[i]+0.5*h_z);
+          H3[i] = dt_xdz(vx[i]+0.5*h_z*H2[i],vy[i]+N2[i]*h_z*0.5, vz[i]+0.5*h_z);
+	  N3[i] = dt_ydz(vx[i]+0.5*h_z*H2[i],vy[i]+N2[i]*h_z*0.5,vz[i]+0.5*h_z);
 
-          K4[i] = fx(x[i]+K3[i]*h,y[i]+M3[i]*h,z[i]+h*H3[i]);
-          M4[i] = fy(x[i]+h*K3[i],y[i]+M3[i]*h,z[i]+h*H3[i]);
-          H4[i] = dt_xdz(x[i]+h*K3[i],y[i]+M3[i]*h,z[i]+h*H3[i]);
-	  N4[i] = dt_ydz(x[i]+h*K3[i],y[i]+M3[i]*h,z[i]+h*H3[i]);	 
+          K4[i] = fx(x[i]+K3[i]*h_z,y[i]+M3[i]*h_z,z[i]+h_z);
+          M4[i] = fy(x[i]+h_z*K3[i],y[i]+M3[i]*h_z,z[i]+h_z);
+          H4[i] = dt_xdz(vx[i]+h_z*H3[i],vy[i]+N3[i]*h_z,vz[i]+h_z);
+	  N4[i] = dt_ydz(vx[i]+h_z*H3[i],vy[i]+N3[i]*h_z,vz[i]+h_z);	 
 
 
-          x[i+1] = x[i] + h/6 *( K1[i] + 2*K2[i] + 2*K3[i] + K4[i]);
-          y[i+1]  = y[i] + h/6 *( M1[i] + 2*M2[i] + 2*M3[i] + M4[i]);
-          z[i+1]  = z[i] + h/6 *( H1[i] + 2*H2[i] + 2*H3[i] + H4[i]);
-          t[i+1]= t[i] + h;
+          x[i+1] = x[i] + h_z/6 *( K1[i] + 2*K2[i] + 2*K3[i] + K4[i]);
+          y[i+1]  = y[i] + h_z/6 *( M1[i] + 2*M2[i] + 2*M3[i] + M4[i]);
+          z[i+1]  = z[i] + h_z;
+          //t[i+1]= t[i] + h;
 
+	  vx[i+1] = vx[i] + h_z/6 *( H1[i] + 2*H2[i] + 2*H3[i] + H4[i]);
+          vy[i+1]  = vy[i] + h_z/6 *( N1[i] + 2*N2[i] + 2*N3[i] + N4[i]);
+          vz[i+1]  = vz[i] + h_z;
 
 
           x[i] = x[i+1];
           z[i] = z[i+1];
           y[i] = y[i+1];
-          t[i] = t[i+1];
+          //t[i] = t[i+1];
+
+	  vx[i] = vx[i+1];
+          vz[i] = vz[i+1];
+          vy[i] = vy[i+1];
+
 
 	}
 
@@ -567,27 +588,27 @@ void kalman(){
 */
 
 
-  c1->cd(1);
-  auto r1=new TGraph2D(n,x,y,z);
-  r1->SetTitle("Particle motion; X axis;Y axis; Z axis");
+//  c1->cd(1);
+  //auto r1=new TGraph2D(n,x,y,z);
+  //r1->SetTitle("Particle motion; X axis;Y axis; Z axis");
 //  gStyle->SetPalette(1);
 //  gr1->SetMarkerStyle(20);
-  r1->Draw(" LINE");
+  //r1->Draw(" LINE");
 
-/*
+
    c1->cd(2);
 
-//   TGraph *gr1 = new TGraph (n, X_1(0,0),Z(0,0));
-//   gr1->GetXaxis()->SetTitle("vz position");
-  // gr1->GetYaxis()->SetTitle("vy Position");
-  // gr1->GetXaxis()->CenterTitle();
-   //gr1->GetYaxis()->CenterTitle();
-   //gr1->Draw("AL");
-*/
+   TGraph *gr1 = new TGraph (n, x,y);
+   gr1->GetXaxis()->SetTitle("z position");
+   gr1->GetYaxis()->SetTitle("x Position");
+   gr1->GetXaxis()->CenterTitle();
+   gr1->GetYaxis()->CenterTitle();
+   gr1->Draw("AL");
+
 
  c1->cd(3);
 
-   TGraph *g = new TGraph (n, z,y);
+   TGraph *g = new TGraph (n, vz,vy);
    g->GetXaxis()->SetTitle("z position");
    g->GetYaxis()->SetTitle("y Position");
    g->GetXaxis()->CenterTitle();
@@ -596,9 +617,9 @@ void kalman(){
 
  c1->cd(4);
 
-   TGraph *gn = new TGraph (n, x,y);
+   TGraph *gn = new TGraph (n, vx,vy);
    gn->GetXaxis()->SetTitle("x position");
-   gn->GetYaxis()->SetTitle("z Position");
+   gn->GetYaxis()->SetTitle("y Position");
    gn->GetXaxis()->CenterTitle();
    gn->GetYaxis()->CenterTitle();
    gn->Draw("AL");
