@@ -130,7 +130,7 @@ double  dydt(double t,double vx, double vy, Double_t vz,Double_t s){
         po = TMath::ACos(vz/rr);
  
 
-        f2 =  q/m * (Ey + vz*Bx - vx*Bz) ;//- s*TMath::Sin(po)*TMath::Sin(az); 
+        f2 =  q/m * (Ey + vz*Bx - vx*Bz);// - s*TMath::Sin(po)*TMath::Sin(az); 
 
 	//std::cout<<f2<<std::endl;
         return f2;
@@ -156,24 +156,56 @@ double  dzdt(double t,double vx, double vy,Double_t vz, Double_t s){
         po = TMath::ACos(vz/rr);
  
 
-        f3 =  q/m * (Ez + vx*By - vy*Bx) ;//- s*TMath::Cos(po);
+        f3 =  q/m * (Ez + vx*By - vy*Bx);// - s*TMath::Cos(po);
 	//std::cout <<r<< " " << TMath::Power(vy,2) + TMath::Power(vx,2) + TMath::Power(vz,2)<< " " << TMath::Power(vz,2) <<  std::endl; 
         return f3;
         }
 
 //  Functions for positions. 
 
-Double_t fx(Double_t t,Double_t vx){
-        return vx;
+Double_t fx(Double_t x, Double_t y, Double_t vx,Double_t vy, Double_t vz){
+        return vx/vz;
         }
 
-Double_t fy(Double_t t,Double_t vy){
-        return vy;
+Double_t fy(Double_t x, Double_t y,Double_t vx,Double_t vy, Double_t vz){
+        return vy/vz;
         }
 
-Double_t  fz(Double_t t,Double_t vz){
-        return vz;
+Double_t  dt_xdz(Double_t x, Double_t y,Double_t vx, Double_t vy, Double_t vz){
+	Double_t k,q,p,tx,ty,Bz,By,Bx,dt;
+	k = 0.2;
+	q = 3.2*pow(10,-19);   //charge of the particle in eV
+	p= 1.0;
+	Double_t B=2.0;                 // Applied magnetic field.
+	Bx = 0;                      // magnetic field in x and y  direction in Tesla.
+        By = 0;
+        Bz = B;          // magnetic field in the z direction in Tesla.
+	tx = vx/vz;
+	ty = vy/vz;
+
+	dt = k*(q/p)*TMath::Sqrt(pow(tx,2)+pow(ty,2)+1)*(ty*Bz-(1+pow(tx,2))*By+tx*ty*By);
+
+        return dt;
         }
+
+
+Double_t  dt_ydz(Doule_t x, Double_t y, Double_t vx, Double_t vy, Double_t vz){
+        Double_t k,q,p,tx,ty,Bz,By,Bx,dt;
+        k = 0.2;
+        q = 3.2*pow(10,-19);   //charge of the particle in eV
+        p= 1.0;
+        Double_t B=2.0;                 // Applied magnetic field.
+        Bx = 0;                      // magnetic field in x and y  direction in Tesla.
+        By = 0;
+        Bz = B;          // magnetic field in the z direction in Tesla.
+        tx = vx/vz;
+        ty = vy/vz;
+
+        dt = k*(q/p)*TMath::Sqrt(pow(tx,2)+pow(ty,2)+1)*(-tx*Bz-(1+pow(ty,2))*Bx-tx*ty*By);
+
+        return dt;
+        }
+
 
 
 
@@ -183,7 +215,7 @@ void kalman(){
         c1->Divide(2,2);
 
         const Int_t n = 1000;
-	//Double_t m = 6.64*TMath::Power(10,-27);
+	Double_t m = 6.64*TMath::Power(10,-27);
 	Int_t v = 1;
 	Double_t t[n],vx[n],vy[n],vz[n],c,beta,gamma;
 	Double_t x[n],y[n],z[n];
@@ -208,9 +240,9 @@ void kalman(){
         vy[0]=gamma*c*TMath::Sin(theta/180*M_PI)*TMath::Sin(phi/180*M_PI);
 	vz[0]=gamma*c*TMath::Cos(theta/180*M_PI);
 	Double_t  h=(tf-t0)/n;                             // step_size in seconds
-	//x[0] = vx[0] ;
-	//y[0] = vy[0];
-	//z[0] = vz[0];
+	x[0] = vx[0] ;
+	y[0] = vy[0];
+	z[0] = vz[0];
 	//Graph to evaluate Energy loss
 	Double_t  gasMediumDensity_ = 0.0153236;   //g/cm3
 	Double_t p[n],s[n],vv[n],bet[n],gamma1[n],Energy[n];
@@ -219,6 +251,9 @@ void kalman(){
        energyloss("van.txt", eLossCurve);
 
 	//eLossCurve->Draw();
+
+	std::cout<<x[0] << " " << y[0] << " " << z[0] << std::endl;
+	//Start Rk4. 
 
 	for(Int_t i=0;i <n-1;  i++){
   //       std::cout<<vx[i] << " "<<vy[i]<< " " <<vz[i]<<std::endl;
@@ -251,20 +286,22 @@ void kalman(){
           t[i] = t[i+1];
 
 	  //std::cout<<vx[i]<<endl;
-
 /*
+
 	  vv[i] = TMath::Sqrt(TMath::Power(vx[i],2)+TMath::Power(vy[i],2)+TMath::Power(vz[i],2));
           bet[i] = vv[i]/c;
 //          gamma1[i] = TMath::Sqrt(4/(TMath::Power(bet[i],2)));
   //        Energy[i] = (gamma1[i] - 1) *931.494028;
+
 	  Energy[i] = 4 * 931.495*0.5*TMath::Power(bet[i],2);    // For non-relativity
-          std::cout<< vv[i] << " " << bet[i] << std:: endl;
+          //std::cout<< vv[i] << " " << bet[i] << std:: endl;
           if (Energy[i] < 0.01)
          {
 
 		p[i] = Energy[i];
 
 	  return 1;
+
 
 	}
 
@@ -281,19 +318,64 @@ void kalman(){
 
           //if(elossfile->eof()) break;
 */
+
         }
 //	TGraph* gr = new TGraph(100,p,s);
   //      gr->Draw();
+	//RK4 for tracking the position of the particle.
+	Double_t K1[n],K2[n],K3[n],K4[n];
+        Double_t M1[n],M2[n],M3[n],M4[n];
+        Double_t H1[n],H2[n],H3[n],H4[n];
+	Double_t N1[n],N2[n],N3[n],N4[n];
+
+	for(Int_t i=0;i <n-1;  i++){
+  //       std::cout<<vx[i] << " "<<vy[i]<< " " <<vz[i]<<std::endl;
+          K1[i] = fx(x[i],y[i],vx[i],vy[i],vz[i]);
+          M1[i] = fy(x[i],y[i],vx[i],vy[i],vz[i]);
+          H1[i] = dt_xdz(x[i],y[i],vx[i],vy[i],vz[i]);
+	  N1[i] = dt_ydz(x[i],y[i],z[i],vx[i],vy[i],vz[i]);
+
+          K2[i] = fx(x[i]+0.5*h*K1[i],y[i]+M1[i]*h*0.5,z[i]+0.5*h*H1[i]);
+          M2[i] = fy(x[i]+K1[i]*h*0.5,y[i]+M1[i]*h*0.5,z[i]+0.5*h*H1[i]);
+          H2[i] = dt_xdz(x[i]+0.5*h*K1[i],y[i]+M1[i]*h*0.5,z[i]+0.5*h*H1[i]);
+	  N2[i] = dt_ydz(x[i]+0.5*h*K1[i],y[i]+M1[i]*h*0.5,z[i]+0.5*h*H1[i]);
+
+          K3[i] = fx(x[i]+K2[i]*h*0.5, y[i]+M2[i]*h*0.5,z[i]+0.5*h*H2[i]);
+          M3[i] = fy(x[i]+K2[i]*h*0.5,y[i]+M2[i]*h*0.5,z[i]+0.5*h*H2[i]);
+          H3[i] = dt_xdz(x[i]+0.5*h*K2[i],y[i]+M2[i]*h*0.5,z[i]+0.5*h*H2[i]);
+	  N3[i] = dt_ydz(x[i]+0.5*h*K2[i],y[i]+M2[i]*h*0.5,z[i]+0.5*h*H2[i]);
+
+          K4[i] = fx(x[i]+K3[i]*h,y[i]+M3[i]*h,z[i]+h*H3[i]);
+          M4[i] = fy(x[i]+h*K3[i],y[i]+M3[i]*h,z[i]+h*H3[i]);
+          H4[i] = dt_xdz(x[i]+h*K3[i],y[i]+M3[i]*h,z[i]+h*H3[i]);
+	  N4[i] = dt_ydz(x[i]+h*K3[i],y[i]+M3[i]*h,z[i]+h*H3[i]);	 
+
+
+          x[i+1] = x[i] + h/6 *( K1[i] + 2*K2[i] + 2*K3[i] + K4[i]);
+          y[i+1]  = y[i] + h/6 *( M1[i] + 2*M2[i] + 2*M3[i] + M4[i]);
+          z[i+1]  = z[i] + h/6 *( H1[i] + 2*H2[i] + 2*H3[i] + H4[i]);
+          t[i+1]= t[i] + h;
+
+
+
+          x[i] = x[i+1];
+          z[i] = z[i+1];
+          y[i] = y[i+1];
+          t[i] = t[i+1];
+
+	}
+
+/*
 
 	// For starting  kalman filter.
 
 	//sytem parameters.
 
 	Double_t Ex,Ey,Ez,f3;              //Electric field in V/m. 
-        Double_t Bx,By,Bz,m1;              // magnetic field in Tesla
+        Double_t Bx,By,Bz,m1,m2;              // magnetic field in Tesla
         Double_t q = 3.2*pow(10,-19);   //charge of the particle in eV
         Double_t B=2.0;                 // Applied magnetic field. 
-        Double_t m = 6.64*TMath::Power(10,-27);  // mass of the particle in kg
+        m1 = 6.64*TMath::Power(10,-27);  // mass of the particle in kg
         Double_t E = TMath::Cos((q*B)/m) * 500 ; 
         Bx = 0;                      // magnetic field in x and y  direction in Tesla.
         By = 0;
@@ -301,7 +383,7 @@ void kalman(){
         Ex = 0;                      // Electric field in the x and  direction in V/m. 
         Ey = 0;
         Ez = -E; 
-	m1=q/m;
+	m2=q/m1;
 	//DEfine all matrices
 
         TMatrixD F_1(3,3);      //state transition matrix.
@@ -324,7 +406,7 @@ void kalman(){
         TMatrixD Z(3,1);
  
 	//filling the matrices
-        Double_t Matrix_F[9] = {0,m1*Bz,m1*By,m1*-Bz,0,m1*Bx,m1*By,m1*Bx,0};
+        Double_t Matrix_F[9] = {0,1,1,1,0,1,1,1,0};
         F_1.Use(F_1.GetNrows(), F_1.GetNcols(), Matrix_F);
 
         Double_t Matrix_G[3] = {1,1,1};
@@ -335,9 +417,9 @@ void kalman(){
 
 	// Initial predicted state
 	Double_t vx_1[n],vy_1[n],vz_1[n];
-	vx_1[0] = 0;
-	vy_1[0] = 0;
-	vz_1[0] = 0; 
+	vx_1[0] = 0.0001;
+	vy_1[0] = 0.0001;
+	vz_1[0] = 0.0001; 
 
         Double_t Matrix_X[3] = {vx_1[0],vy_1[0],vz_1[0]};
         X_1.Use(X_1.GetNrows(), X_1.GetNcols(), Matrix_X);
@@ -436,7 +518,7 @@ void kalman(){
         P_ny[0] = covariance1;
         P_nz[0] = covariance2;
 
-	std::cout<<r_x[0]<<" "<<P_n[0]<<std::endl;
+	//std::cout<<r_x[0]<<" "<<P_n[0]<<std::endl;
 
 
 
@@ -445,7 +527,8 @@ void kalman(){
 
 	Double_t Matrix_R[9] ={r_x[0],0,0,0,r_y[0],0,0,0,r_z[0]};          // Error in measurements.
         R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
-
+	
+	P_1.Print();
 	for(Int_t i=0; i<n; i++){
 
         Double_t Matrix_Y[3] = {vx[i],vy[i],vz[i]};
@@ -473,54 +556,55 @@ void kalman(){
         }
 
 
-        R_1.Print();
-        P_1.Print();
+        x_pred.Print();
+        P_pred.Print();
 	
 
 
 
 	return 0;
 	
+*/
 
 
-/*
   c1->cd(1);
-  auto r1=new TGraph2D(n,I_vx,I_vy,I_vz);
+  auto r1=new TGraph2D(n,x,y,z);
   r1->SetTitle("Particle motion; X axis;Y axis; Z axis");
 //  gStyle->SetPalette(1);
 //  gr1->SetMarkerStyle(20);
   r1->Draw(" LINE");
-*/
 
+/*
    c1->cd(2);
 
-      X_1.DrawClone("colz");
 //   TGraph *gr1 = new TGraph (n, X_1(0,0),Z(0,0));
 //   gr1->GetXaxis()->SetTitle("vz position");
   // gr1->GetYaxis()->SetTitle("vy Position");
   // gr1->GetXaxis()->CenterTitle();
    //gr1->GetYaxis()->CenterTitle();
    //gr1->Draw("AL");
-/*
+*/
+
  c1->cd(3);
 
-   TGraph *g = new TGraph (n, vz,vy);
-   g->GetXaxis()->SetTitle("vz position");
-   g->GetYaxis()->SetTitle("vy Position");
+   TGraph *g = new TGraph (n, z,y);
+   g->GetXaxis()->SetTitle("z position");
+   g->GetYaxis()->SetTitle("y Position");
    g->GetXaxis()->CenterTitle();
    g->GetYaxis()->CenterTitle();
    g->Draw("AL");
 
  c1->cd(4);
 
-   TGraph *gn = new TGraph (n, vx,vy);
-   gn->GetXaxis()->SetTitle("vx position");
-   gn->GetYaxis()->SetTitle("vz Position");
+   TGraph *gn = new TGraph (n, x,y);
+   gn->GetXaxis()->SetTitle("x position");
+   gn->GetYaxis()->SetTitle("z Position");
    gn->GetXaxis()->CenterTitle();
    gn->GetYaxis()->CenterTitle();
    gn->Draw("AL");
 
-*/
+
+
 
 //elossfile.close();
 }
