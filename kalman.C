@@ -12,6 +12,7 @@
 #include <fstream>
 #include <string>
 
+
 using namespace std;
 
 
@@ -98,10 +99,6 @@ Double_t  dxdt(double t,double vx, double vy, Double_t vz){
         Ex = 0;
 	Ey = 0;			// Electric field in the x and  direction in V/m.
 	Ez = -E;                        // Electric field in the z direction. 
-	
-	rr = TMath::Sqrt(TMath::Power(vx,2)+TMath::Power(vy,2)+TMath::Power(vz,2));
-	az = TMath::ATan(vy/vx);
-	po = TMath::ACos(vz/rr);
 
 
 	f1 =  q/m * (Ex + vy*Bz-vz*By); //-s*TMath::Sin(po)*TMath::Cos(az) ;                                    //dxdt with energyloss compensation.
@@ -190,6 +187,77 @@ Double_t fz(Double_t t,Double_t vz){
 
         }
 
+// Define a functions to calculate the Jacobian matrix of the equations.
+void Jacobi_matrice(Double_t Jacobi_matrix[][6]){
+
+ // Define the size of the matrix
+        Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
+        Int_t cols = 6; // the number of cols.
+
+        // Define the jacobi matrix to hold state vectors
+        Double_t Ex,Ey,Ez,f1;                   //Electric field in V/m. 
+        Double_t Bx,By,Bz;              // magnetic field in Tesla
+        Double_t rr,az,po;
+        Double_t q = 1.6022*TMath::Power(10,-19);       //charge of the particle(proton) in (C)
+        Double_t m = 1.6726*TMath::Power(10,-27);       // mass of the particle in kg
+        Double_t B=3.0;                 // Applied magnetic field (T).
+        Double_t E=TMath::Cos((q*B)/m) * 500;   // Applied Electric field(V/m).
+        Bx = 0;
+        By = 0;                 // magnetic field in x and y  direction in Tesla.
+        Bz = B;          // magnetic field in the z direction in Tesla.
+        Ex = 0;
+        Ey = 0;                 // Electric field in the x and  direction in V/m.
+        Ez = -E;
+
+
+        Jacobi_matrix[0][0] = 0;
+        Jacobi_matrix[0][1] = 0;
+        Jacobi_matrix[0][2] = 0;
+        Jacobi_matrix[0][3] = 1;
+        Jacobi_matrix[0][4] = 0;
+        Jacobi_matrix[0][5] = 0;
+
+        Jacobi_matrix[1][0] = 0;
+        Jacobi_matrix[1][1] = 0;
+        Jacobi_matrix[1][2] = 0;
+        Jacobi_matrix[1][3] = 0;
+        Jacobi_matrix[1][4] = 1;
+        Jacobi_matrix[1][5] = 0;
+
+	Jacobi_matrix[2][0] = 0;
+        Jacobi_matrix[2][1] = 0;
+        Jacobi_matrix[2][2] = 0;
+        Jacobi_matrix[2][3] = 0;
+        Jacobi_matrix[2][4] = 0;
+        Jacobi_matrix[2][5] = 1;
+
+        Jacobi_matrix[3][0] = 0;
+        Jacobi_matrix[3][1] = 0;
+        Jacobi_matrix[3][2] = 0;
+        Jacobi_matrix[3][3] = 0;
+        Jacobi_matrix[3][4] = q/m*(Ex+Bz);
+        Jacobi_matrix[3][5] = q/m *(Ex-By);
+
+        Jacobi_matrix[4][0] = 0;
+        Jacobi_matrix[4][1] = 0;
+        Jacobi_matrix[4][2] = 0;
+        Jacobi_matrix[4][3] = q/m * (Ey-Bz);
+        Jacobi_matrix[4][4] = 0;
+        Jacobi_matrix[4][5] = q/m*(Ey+Bx);
+ 
+
+	Jacobi_matrix[5][0] = 0;
+        Jacobi_matrix[5][1] = 0;
+        Jacobi_matrix[5][2] = 0;
+        Jacobi_matrix[5][3] = q/m * (Ez+By);
+        Jacobi_matrix[5][4] = q/m * (Ez-Bx);
+        Jacobi_matrix[5][5] = 0;
+
+
+
+}
+
+
 
 void kalman(){
 
@@ -197,14 +265,9 @@ void kalman(){
         c1->Divide(2,2);
 
         const Int_t n = 1000;
-	Double_t m = 6.64*TMath::Power(10,-27);
-	Int_t v = 1;
 
-	Double_t t[n],vx[n],vy[n],vz[n],c,beta,gamma;
+	Double_t t[n],vx[n],vy[n],vz[n];
 	Double_t x[n],y[n],z[n],z0,zf;
-
-	c = 2.99792*TMath::Power(10,8);
-	gamma =1/TMath::Sqrt(1-TMath::Power(v/c,2));
 
 	Double_t k1x[n],k2x[n],k3x[n],k4x[n];
         Double_t k1y[n],k2y[n],k3y[n],k4y[n];
@@ -213,11 +276,6 @@ void kalman(){
 	Double_t k1vx[n],k2vx[n],k3vx[n],k4vx[n];
         Double_t k1vy[n],k2vy[n],k3vy[n],k4vy[n];
         Double_t k1vz[n],k2vz[n],k3vz[n],k4vz[n];
-
-
-	Double_t theta,phi;         // Using spherical coordinates.
-        theta=2.83135;
-	phi=-1.41593;
 
        // Define the initial conditions
          x[0] = 0.0;      // initial x position
@@ -235,13 +293,6 @@ void kalman(){
 	//double tf=8.18*TMath::Power(10,-7);
 	//double t0=0.0;
 
-
-
-        //vy[0]=gamma*c*TMath::Sin(theta/180*M_PI)*TMath::Sin(phi/180*M_PI);
-	//vz[0]=gamma*c*TMath::Cos(theta/180*M_PI);
-	//x[0] = 0.001;
-	//y[0] = 0.001;
-	//z[0] = 0.001;
 
 	//Graph to evaluate Energy loss
 	Double_t  gasMediumDensity_ = 0.0153236;   //g/cm3
@@ -265,26 +316,26 @@ void kalman(){
            k1vy[i] = dydt(t[i],vx[i],vy[i],vz[i]);
            k1vz[i] = dzdt(t[i],vx[i],vy[i],vz[i]);
 
-           k2x[i] = fx(t[i]+h*0.5,vx[i]+0.5*h*k1vx[i]);
-           k2y[i] = fy(t[i]+h*0.5,vy[i]+0.5*h*k1vy[i]);
-           k2z[i] = fz(t[i]+h*0.5,vz[i]+0.5*h*k1vz[i]);
+           k2x[i] = fx(t[i]+h*0.5,vx[i]+0.5*h*k1x[i]);
+           k2y[i] = fy(t[i]+h*0.5,vy[i]+0.5*h*k1y[i]);
+           k2z[i] = fz(t[i]+h*0.5,vz[i]+0.5*h*k1z[i]);
 
            k2vx[i] = dxdt(t[i]+h*0.5,vx[i]+k1vx[i]*0.5*h,vy[i]+k1vy[i]*h*0.5,vz[i]+k1vz[i]*h*0.5);
            k2vy[i] = dydt(t[i]+h*0.5,vx[i]+k1vx[i]*h*0.5, vy[i]+k1vy[i]*h*0.5,vz[i]+k1vz[i]*h*0.5);
            k2vz[i] = dzdt(t[i]+h*0.5,vx[i]+k1vx[i]*h*0.5, vy[i]+k1vy[i]*h*0.5, vz[i]+k1vz[i]*h*0.5);
 
 
-	   k3x[i] = fx(t[i]+h*0.5,vx[i]+0.5*h*k2vx[i]);
-           k3y[i] = fy(t[i]+h*0.5,vy[i]+0.5*h*k2vy[i]);
-           k3z[i] = fz(t[i]+h*0.5,vz[i]+0.5*h*k2vz[i]);
+	   k3x[i] = fx(t[i]+h*0.5,vx[i]+0.5*h*k2x[i]);
+           k3y[i] = fy(t[i]+h*0.5,vy[i]+0.5*h*k2y[i]);
+           k3z[i] = fz(t[i]+h*0.5,vz[i]+0.5*h*k2z[i]);
 
            k3vx[i] = dxdt(t[i]+h*0.5,vx[i]+k2vx[i]*0.5*h,vy[i]+k2vy[i]*h*0.5,k2vz[i]*vz[i]*h*0.5);
            k3vy[i] = dydt(t[i]+h*0.5,vx[i]+k2vx[i]*h*0.5, vy[i]+k2vy[i]*h*0.5,vz[i]+k2vz[i]*h*0.5);
            k3vz[i] = dzdt(t[i]+h*0.5,vx[i]+k2vx[i]*h*0.5, vy[i]+k2vy[i]*h*0.5, vz[i]+k2vz[i]*h*0.5);
 
-           k4x[i] = fx(t[i]+h,vx[i]+k3vx[i]*h);
-           k4y[i] = fy(t[i]+h,vy[i]+k3vy[i]*h);
-           k4z[i] = fz(t[i]+h,vz[i]+k3vz[i]*h);
+           k4x[i] = fx(t[i]+h,vx[i]+k3x[i]*h);
+           k4y[i] = fy(t[i]+h,vy[i]+k3y[i]*h);
+           k4z[i] = fz(t[i]+h,vz[i]+k3z[i]*h);
 
            k4vx[i] = dxdt(t[i]+h,vx[i]+k3vx[i]*h,vy[i]+k3vy[i]*h,vz[i]+k3vz[i]*h);
            k4vy[i] = dydt(t[i]+h,vx[i]+k3vx[i]*h,vy[i]+k3vy[i]*h,vz[i]+k3vz[i]*h);
@@ -294,88 +345,65 @@ void kalman(){
           vx[i+1] = vx[i] + h/6 *( k1vx[i] + 2*k2vx[i] + 2*k3vx[i] + k4vx[i]);
           vy[i+1]  = vy[i] + h/6 *( k1vy[i] + 2*k2vy[i] + 2*k3vy[i] + k4vy[i]);
 	  vz[i+1]  = vz[i] + h/6 *( k1vz[i] + 2*k2vz[i] + 2*k3vz[i] + k4vz[i]);
+
+	  x[i+1] = x[i] + h/6 *( k1x[i] + 2*k2x[i] + 2*k3x[i] + k4x[i]);
+          y[i+1]  = y[i] + h/6 *( k1y[i] + 2*k2y[i] + 2*k3y[i] + k4y[i]);
+          z[i+1]  = z[i] + h/6 *( k1z[i] + 2*k2z[i] + 2*k3z[i] + k4z[i]);
+
           t[i+1]= t[i] + h;
 
-	  std::cout<<vx[i]<< " "<<vy[i]<<" " << vz[i] << " " << h << endl;
+	 // std::cout<<vx[i]<< " "<<vy[i]<<" " << vz[i] << " " << h << endl;
 
           
           vx[i] = vx[i+1];
 	  vz[i] = vz[i+1];
           vy[i] = vy[i+1];
 
+          x[i] = x[i+1];
+          z[i] = z[i+1];
+          y[i] = y[i+1];
+
           t[i] = t[i+1];
 
-	  //std::cout<<vx[i]<<endl;
-
-/*
-	  vv[i] = TMath::Sqrt(TMath::Power(vx[i],2)+TMath::Power(vy[i],2)+TMath::Power(vz[i],2));
-          bet[i] = vv[i]/c;
-//          gamma1[i] = TMath::Sqrt(4/(TMath::Power(bet[i],2)));
-  //        Energy[i] = (gamma1[i] - 1) *931.494028;
-
-	  Energy[i] = 4 * 931.495*0.5*TMath::Power(bet[i],2);    // For non-relativity
-          //std::cout<< vv[i] << " " << bet[i] << std:: endl;
-          if (Energy[i] < 0.01)
-         {
-
-		p[i] = Energy[i];
-
-	  return 1;
-
-
-	}
-
-
-
-
-          //p[i] = Energy[i];
-          s[i] = gasMediumDensity_*eLossCurve->Eval(p[i]);
-          s[i] = s[i]* 1.6021773349*TMath::Power(10,-13); // convert MeV to J (kg.m^2.s^-2)
-          s[i] = s[i]* gasMediumDensity_*100; // multiply with density to get kg.m.s^-2 (Force)
-          s[i] = s[i]/ m; // divide by mass to get homogeneous with acceleration (m.s^-2)
-          //std::cout<<" Energy : "<<gamma1[i]<<" - dE/dx :     "<<eLossCurve->Eval(p[i])<<" - dE/dx (density) :"<<s[i]<<"\n";
-         // std::cout<<" Energy (Curves) : "<<s[i]<<" - dE/dx :     "<<" - dE/dx (density) :"<<Energy[i]<<"\n";
-
-*/          //if(elossfile->eof()) break;
+        // std::cout<<x[i+1]<<" "<<y[i+1]<<" "<<z[i+1]<<endl;
 
 
         }
+        // Define the size of the matrix
+        Int_t rows = 6; // the number of state variables
+        Int_t cols = n; // the number of steptime.
+
+	// Define matrix to hold state vectors
+        Double_t  state_matrix[rows][cols];
+
+        // Fill in matrix with state vectors
+        for (int i = 0; i < n-1; i++) {
+            state_matrix[0][i] = x[i];
+            state_matrix[1][i] = y[i];
+            state_matrix[2][i] = z[i];
+            state_matrix[3][i] = vx[i];
+            state_matrix[4][i] = vy[i];
+            state_matrix[5][i] = vz[i];
+        }
+
+	Double_t Jacobi_matrix[6][6];
+	Jacobi_matrice(Jacobi_matrix);
 
 
-//	TGraph* gr = new TGraph(100,p,s);
-  //      gr->Draw();
-	//The Propagator matrices. putting RK4 in TMatrices
+
+
+
+        cout << "propagator state matrix:" << endl;
+	for (int i = 0; i < 6; i++) {
+  	    for (int j = 0; j < 6; j++) {
+    		cout << Jacobi_matrix[i][j] << " ";
+  	    }
+            cout << endl;
+        }
+
+
+
 /*
-	TArrayD x_pos(n*1);
-	TMatrixD X1_pos(n,1);
-	TArrayD y_pos(n*1);
-        TMatrixD Y1_pos(n,1);
-	TArrayD z_pos(n*1);
-        TMatrixD Z1_pos(n,1);
-	TArrayD vx_pos(n*1);
-        TMatrixD VX1_pos(n,1);
-	TArrayD vy_pos(n*1);
-        TMatrixD VY1_pos(n,1);
-	TArrayD vz_pos(n*1);
-        TMatrixD VZ1_pos(n,1);
-	TMatrixD Cord_pos(6,1);
-
-	for (auto i=0;i<n-1;i++){
-		x_pos[i] = x[i];
-	        y_pos[i] = y[i];
-		z_pos[i] = z[i];
-		vx_pos[i] = vx[i];
-		vy_pos[i] = vy[i];
-		vz_pos[i] = vz[i];
-                Double_t Matrix_pos[6] = {x[i],y[i],z[i],vx[i],vy[i],vz[i]};
-                Cord_pos.Use(Cord_pos.GetNrows(), Cord_pos.GetNcols(), Matrix_pos);
- 		//Cord_pos.Print();
-	}
-
-
-	//X1_pos.SetMatrixArray(x_pos.GetArray());
-	//Cord_pos.SetMatrixArray(x_pos.GetArray(),y_pos.GetArray(),z_pos.GetArray(),vx_pos.GetArray(),vy_pos.GetArray(),vz_pos.GetArray());
-
 	// For starting  kalman filter.
 
 	//sytem parameters.
