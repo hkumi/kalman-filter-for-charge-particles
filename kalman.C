@@ -193,6 +193,7 @@ void Jacobi_matrice(Double_t Jacobi_matrix[][6]){
  // Define the size of the matrix
         Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
         Int_t cols = 6; // the number of cols.
+        Double_t h = 7.49 *TMath::Power(10,-10) ; //in seconds.
 
         // Define the jacobi matrix to hold state vectors
         Double_t Ex,Ey,Ez,f1;                   //Electric field in V/m. 
@@ -213,7 +214,7 @@ void Jacobi_matrice(Double_t Jacobi_matrix[][6]){
         Jacobi_matrix[0][0] = 0;
         Jacobi_matrix[0][1] = 0;
         Jacobi_matrix[0][2] = 0;
-        Jacobi_matrix[0][3] = 1;
+        Jacobi_matrix[0][3] = 1*h;
         Jacobi_matrix[0][4] = 0;
         Jacobi_matrix[0][5] = 0;
 
@@ -221,7 +222,7 @@ void Jacobi_matrice(Double_t Jacobi_matrix[][6]){
         Jacobi_matrix[1][1] = 0;
         Jacobi_matrix[1][2] = 0;
         Jacobi_matrix[1][3] = 0;
-        Jacobi_matrix[1][4] = 1;
+        Jacobi_matrix[1][4] = 1*h;
         Jacobi_matrix[1][5] = 0;
 
 	Jacobi_matrix[2][0] = 0;
@@ -229,28 +230,28 @@ void Jacobi_matrice(Double_t Jacobi_matrix[][6]){
         Jacobi_matrix[2][2] = 0;
         Jacobi_matrix[2][3] = 0;
         Jacobi_matrix[2][4] = 0;
-        Jacobi_matrix[2][5] = 1;
+        Jacobi_matrix[2][5] = 1*h;
 
         Jacobi_matrix[3][0] = 0;
         Jacobi_matrix[3][1] = 0;
         Jacobi_matrix[3][2] = 0;
         Jacobi_matrix[3][3] = 0;
-        Jacobi_matrix[3][4] = q/m*(Ex+Bz);
-        Jacobi_matrix[3][5] = q/m *(Ex-By);
+        Jacobi_matrix[3][4] = q/m*(Ex+Bz)*h;
+        Jacobi_matrix[3][5] = q/m *(Ex-By)*h;
 
         Jacobi_matrix[4][0] = 0;
         Jacobi_matrix[4][1] = 0;
         Jacobi_matrix[4][2] = 0;
-        Jacobi_matrix[4][3] = q/m * (Ey-Bz);
+        Jacobi_matrix[4][3] = q/m * (Ey-Bz)*h;
         Jacobi_matrix[4][4] = 0;
-        Jacobi_matrix[4][5] = q/m*(Ey+Bx);
+        Jacobi_matrix[4][5] = q/m*(Ey+Bx)*h;
  
 
 	Jacobi_matrix[5][0] = 0;
         Jacobi_matrix[5][1] = 0;
         Jacobi_matrix[5][2] = 0;
-        Jacobi_matrix[5][3] = q/m * (Ez+By);
-        Jacobi_matrix[5][4] = q/m * (Ez-Bx);
+        Jacobi_matrix[5][3] = q/m * (Ez+By)*h;
+        Jacobi_matrix[5][4] = q/m * (Ez-Bx)*h;
         Jacobi_matrix[5][5] = 0;
 
 
@@ -390,13 +391,37 @@ void kalman(){
 	Jacobi_matrice(Jacobi_matrix);
 
 
+     // Define matrix to hold time derivatives of state vectors
+        Double_t  state_dot_matrix[rows][cols-1];
 
+     // Calculate time derivatives of state vectors
+        for (int i = 0; i < cols-1; i++) {
+    // Extract state vector at time t
+            Double_t state_vector[6];
+            for (int j = 0; j < 6; j++) {
+                state_vector[j] = state_matrix[j][i];
+            }
+    // Multiply Jacobian matrix with state vector to get time derivative of state vector
+            for (int j = 0; j < 6; j++) {
+                state_dot_matrix[j][i] = 0;
+                for (int k = 0; k < 6; k++) {
+                    state_dot_matrix[j][i] += Jacobi_matrix[j][k] * state_vector[k];
+                }
+            }
+        }
+
+
+
+        double I[6][6] = {{0}};
+        for (int i = 0; i < n; i++) {
+            I[i][i] = 1.0;
+         }
 
 
         cout << "propagator state matrix:" << endl;
 	for (int i = 0; i < 6; i++) {
-  	    for (int j = 0; j < 6; j++) {
-    		cout << Jacobi_matrix[i][j] << " ";
+  	    for (int j = 0; j < cols-1; j++) {
+    		cout << state_dot_matrix[i][j] << " ";
   	    }
             cout << endl;
         }
@@ -621,7 +646,7 @@ void kalman(){
 //	I_1.Print();
 
 
-
+/*
 
   c1->cd(1);
   auto r1=new TGraph2D(n,vx,vy,vz);
@@ -660,7 +685,7 @@ void kalman(){
    gn->Draw("AL");
 
 
-
+*/
 
 //elossfile.close();
 }
