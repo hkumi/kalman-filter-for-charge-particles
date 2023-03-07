@@ -258,6 +258,111 @@ void Jacobi_matrice(Double_t Jacobi_matrix[][6]){
 
 }
 
+// Define a functions to calculate the process noise matrix Q .
+//this is a 6*6 matrice for my case. 
+void Process_noise(Double_t noise_matrix[][6]){
+
+        // Define the noise matrix to hold state vectors
+
+        noise_matrix[0][0] = 1e-9;
+        noise_matrix[0][1] = 0;
+        noise_matrix[0][2] = 0;
+        noise_matrix[0][3] = 0;
+        noise_matrix[0][4] = 0;
+        noise_matrix[0][5] = 0;
+
+        noise_matrix[1][0] = 0;
+        noise_matrix[1][1] = 1e-9;
+        noise_matrix[1][2] = 0;
+        noise_matrix[1][3] = 0;
+        noise_matrix[1][4] = 0;
+        noise_matrix[1][5] = 0;
+
+        noise_matrix[2][0] = 0;
+        noise_matrix[2][1] = 0;
+        noise_matrix[2][2] = 1e-9;
+        noise_matrix[2][3] = 0;
+        noise_matrix[2][4] = 0;
+        noise_matrix[2][5] = 0;
+
+        noise_matrix[3][0] = 0;
+        noise_matrix[3][1] = 0;
+        noise_matrix[3][2] = 0;
+        noise_matrix[3][3] = 1e-12;
+        noise_matrix[3][4] = 0;
+        noise_matrix[3][5] = 0;
+
+        noise_matrix[4][0] = 0;
+        noise_matrix[4][1] = 0;
+        noise_matrix[4][2] = 0;
+        noise_matrix[4][3] = 0;
+        noise_matrix[4][4] = 1e-12;
+        noise_matrix[4][5] = 0;
+ 
+
+        noise_matrix[5][0] = 0;
+        noise_matrix[5][1] = 0;
+        noise_matrix[5][2] = 0;
+        noise_matrix[5][3] = 0;
+        noise_matrix[5][4] = 0;
+        noise_matrix[5][5] = 1e-12;
+
+
+
+}
+
+// Define a functions to calculate the Initial Covariance P .
+//this is a 6*6 matrice for my case. 
+void Ini_P(Double_t covariance_matrix[][6]){
+
+        // Define the noise matrix to hold state vectors
+
+        covariance_matrix[0][0] = 1e-4;
+        covariance_matrix[0][1] = 0;
+        covariance_matrix[0][2] = 0;
+        covariance_matrix[0][3] = 0;
+        covariance_matrix[0][4] = 0;
+        covariance_matrix[0][5] = 0;
+
+        covariance_matrix[1][0] = 0;
+        covariance_matrix[1][1] = 1e-4;
+        covariance_matrix[1][2] = 0;
+        covariance_matrix[1][3] = 0;
+        covariance_matrix[1][4] = 0;
+        covariance_matrix[1][5] = 0;
+
+        covariance_matrix[2][0] = 0;
+        covariance_matrix[2][1] = 0;
+        covariance_matrix[2][2] = 1e-4;
+        covariance_matrix[2][3] = 0;
+        covariance_matrix[2][4] = 0;
+        covariance_matrix[2][5] = 0;
+
+        covariance_matrix[3][0] = 0;
+        covariance_matrix[3][1] = 0;
+        covariance_matrix[3][2] = 0;
+        covariance_matrix[3][3] = 1e-7;
+        covariance_matrix[3][4] = 0;
+        covariance_matrix[3][5] = 0;
+
+        covariance_matrix[4][0] = 0;
+        covariance_matrix[4][1] = 0;
+        covariance_matrix[4][2] = 0;
+        covariance_matrix[4][3] = 0;
+        covariance_matrix[4][4] = 1e-7;
+        covariance_matrix[4][5] = 0;
+ 
+
+        covariance_matrix[5][0] = 0;
+        covariance_matrix[5][1] = 0;
+        covariance_matrix[5][2] = 0;
+        covariance_matrix[5][3] = 0;
+        covariance_matrix[5][4] = 0;
+        covariance_matrix[5][5] = 1e-7;
+
+
+
+}
 
 
 void kalman(){
@@ -411,63 +516,58 @@ void kalman(){
         }
 
 
-
+       //Identity matrix.
         double I[6][6] = {{0}};
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < 6; i++) {
             I[i][i] = 1.0;
          }
 
 
+        // Calculate propagator matrix using intermediate matrices
+        // Initialize F as identity matrix
+        Double_t F[6][6] = {{0}};
+        for (int i = 0; i < 6; i++) {
+            F[i][i] = 1.0;
+        }
+
+        // Compute F1, F2, F3, F4
+        Double_t Fi[4][6][6];
+        for (int i = 0; i < 4; i++) {
+            Double_t IplusFi[6][6] = {0};
+            for (int j = 0; j < 6; j++) {
+                for (int k = 0; k < 6; k++) {
+                    IplusFi[j][k] = I[j][k] + F[i][j][k] * h;
+                   Fi[j][k] = h*Jacobi_matrix[j][k]*IplusFi[j][k];
+
+                }
+            }
+            for (int j = 0; j < 6; j++) {
+                for (int k = 0; k < 6; k++) {
+                    F[i+1][j][k] = Fi[j][k];
+                }
+            }
+        }
+
+        // Compute F as a weighted sum of F1 through F4
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 6; j++) {
+                F[i][j] += (1.0/6.0)*Fi[0][i][j] + (1.0/3.0)*Fi[1][i][j]
+                   + (1.0/3.0)*Fi[2][i][j] + (1.0/6.0)*Fi[3][i][j];
+                }
+        }
+ 
+
         cout << "propagator state matrix:" << endl;
-	for (int i = 0; i < 6; i++) {
-  	    for (int j = 0; j < cols-1; j++) {
-    		cout << state_dot_matrix[i][j] << " ";
-  	    }
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 6; j++) {
+                cout << F[i][j] << " ";
+            }
             cout << endl;
         }
 
 
-
 /*
 	// For starting  kalman filter.
-
-	//sytem parameters.
-
-	Double_t Ex,Ey,Ez,f3;              //Electric field in V/m. 
-        Double_t Bx,By,Bz,m1,m2;              // magnetic field in Tesla
-        Double_t q = 3.2*pow(10,-19);   //charge of the particle in eV
-        Double_t B=2.0;                 // Applied magnetic field. 
-        m1 = 6.64*TMath::Power(10,-27);  // mass of the particle in kg
-        Double_t E = TMath::Cos((q*B)/m) * 500 ; 
-        Bx = 0;                      // magnetic field in x and y  direction in Tesla.
-        By = 0;
-        Bz = B;          // magnetic field in the z direction in Tesla.
-        Ex = 0;                      // Electric field in the x and  direction in V/m. 
-        Ey = 0;
-        Ez = -E; 
-	m2=q/m1;
-
-	//DEfine all matrices
-	TMatrixD  height_1(6,1);
-	TMatrixD Jacobian(6,6);
-        TMatrixD F_1(3,3);      //state transition matrix.
-        TMatrixD G_1(3,1);	
-	TMatrixD U_1(3,1);  
-        TMatrixD X_1(3,1);	//State Estimate matrix.
-        TMatrixD Y_1(3,1);	//Observation matrix or measurements.
-        TMatrixD H_1(3,3);	//Measurement matrix
-        TMatrixD R_1(3,3);	//Measurement Noise covariance.
-        TMatrixD C_1(3,3);	
-        TMatrixD ax_1(3,1);	
-        TMatrixD P_1(3,3);	//Estimate Error Covariance
-        TMatrixD Q_1(3,3);	//Process Noise Covariance.
-        TMatrixD I_1(6,6);	//Identity matrix.
-
-        //kalman storage
-        TMatrixD x_pred(3,1);
-        TMatrixD P_pred(3,3);
-        TMatrixD K(3,3);	//Kalman Gain.
-        TMatrixD Z(3,1);
  
 	//filling the matrices
 	Double_t Matrix_height[6] = {h_z,h_z,h_z,h,h,h};
