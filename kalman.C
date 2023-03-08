@@ -12,7 +12,7 @@
 #include <fstream>
 #include <string>
 
-
+#include <TMatrixD.h>
 using namespace std;
 
 
@@ -239,26 +239,26 @@ void Jacobi_matrice(TMatrixD &Jacobi_matrix){
 
 // Define a functions to calculate the process noise matrix Q .
 //this is a 6*6 matrice for my case. 
-void Process_noise(TMatrixD &noise_matrix){
+void Process_noise(TMatrixD &Q){
         // Define the size of the matrix
         Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
         Int_t cols = 6; // the number of cols.
 
         // Define the  matrixes to hold process noise. 
-        noise_matrix.ResizeTo(rows,cols);
-        noise_matrix.Zero();
+        Q.ResizeTo(rows,cols);
+        Q.Zero();
 
-        noise_matrix(0,0) = 1e-9;
+        Q(0,0) = 1e-9;
 
-        noise_matrix(1,1) = 1e-9;
+        Q(1,1) = 1e-9;
 
-        noise_matrix(2,2) = 1e-9;
+        Q(2,2) = 1e-9;
 
-        noise_matrix(3,3) = 1e-12;
+        Q(3,3) = 1e-12;
 
-        noise_matrix(4,4) = 1e-12;
+        Q(4,4) = 1e-12;
 
-        noise_matrix(5,5) = 1e-12;
+        Q(5,5) = 1e-12;
 
 
 
@@ -266,7 +266,7 @@ void Process_noise(TMatrixD &noise_matrix){
 
 // Define a functions to calculate the Initial Covariance P .
 //this is a 6*6 matrice for my case. 
-void Ini_P(TMatrixD &covariance_matrix){
+void Ini_P(TMatrixD &P){
 
 
  // Define the size of the matrix
@@ -274,23 +274,23 @@ void Ini_P(TMatrixD &covariance_matrix){
         Int_t cols = 6; // the number of cols.
 
         // Define the noise matrix to hold process noise. 
-        covariance_matrix.ResizeTo(rows,cols);
-        covariance_matrix.Zero();
+        P.ResizeTo(rows,cols);
+        P.Zero();
 
 
         // Define the  matrixes to hold covariance matrix.
 
-        covariance_matrix(0,0) = 1e-4;
+        P(0,0) = 1e-4;
  
-        covariance_matrix(1,1) = 1e-4;
+        P(1,1) = 1e-4;
 
-        covariance_matrix(2,2) = 1e-4;
+        P(2,2) = 1e-4;
 
-        covariance_matrix(3,3) = 1e-7;
+        P(3,3) = 1e-7;
 
-        covariance_matrix(4,4) = 1e-7;
+        P(4,4) = 1e-7;
 
-        covariance_matrix(5,5) = 1e-7;
+        P(5,5) = 1e-7;
 
 
 
@@ -492,201 +492,104 @@ void kalman(){
         // Calculate propagator matrix using intermediate matrices
         // Initialize F as identity matrix
         TMatrixD F(6,6);
-        F.UnitMatrix();
+        F.Zero();
         // Compute F1, F2, F3, F4
         TMatrixD fact(4,1);
         double Factor[4] = {1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0};
         fact.Use(fact.GetNrows(), fact.GetNcols(), Factor);
 
         //fact.Print();
-        TMatrixD dt_1(4,1);
+        TMatrixD dt_1(6,1);
 	TMatrixD IplusFi (6,6);
         IplusFi.Zero();
-        TArrayD dt(4);
-        TArrayD Fi(4);
+        TArrayD dt(6);
+        TMatrixD Fi(6,6);
         for (int i = 0; i < 4; i++) {
-             dt[i] = (t[i+1]-t[0])/1e-10;
-             dt_1.SetMatrixArray(dt.GetArray());
-             IplusFi = I + F* dt_1;
-             Fi[i]  = Jacobi_matrix*(1e-10)*IplusFi;
-             F     += Fi[i] * fact;
+             //dt[i] = (t[i+1]-t[i])/1e-10;
+           //  dt_1.SetMatrixArray(dt.GetArray());
+             IplusFi = I + F* (1e-10);
+             Fi  = (1e-10)*Jacobi_matrix*IplusFi;
+             F     += Fi;  //fact;
+          // F.Print();
        }
-       //dt_1.SetMatrixArray(dt.GetArray());
-            //IplusFi = I + F* h);
-            //Fi[i] = Jacobi_matrix * (h * IplusFi);
-            //F += Fi[i] * Factor;
-            F.Print();
+
+           // F.Print();
         //}
        // IplusFi.Print();
-/*
-	// For starting  kalman filter.
- 
-	//filling the matrices
-	Double_t Matrix_height[6] = {h_z,h_z,h_z,h,h,h};
-        height_1.Use(height_1.GetNrows(), height_1.GetNcols(), Matrix_height);
 
-	Double_t Matrix_JA[36] = {0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,(q/m)*Bz,(-q/m)*By,0,0,0,(-q/m)*Bz,0,(q/m)*Bx,0,0,0,(q/m)*(Ez+By),(q/m)*(Ez-Bx),0};
-	Jacobian.Use(Jacobian.GetNrows(),Jacobian.GetNcols(),Matrix_JA);
+// Needs rethink!!!!
 
-        Double_t Matrix_F[9] = {0,1,1,1,0,1,1,1,0};
-        F_1.Use(F_1.GetNrows(), F_1.GetNcols(), Matrix_F);
-
-        Double_t Matrix_G[3] = {1,1,1};
-        G_1.Use(G_1.GetNrows(), G_1.GetNcols(), Matrix_G);
-
-	Double_t Matrix_U[3] = {m1*Ex,m1*Ey,m1*Ez};
-        U_1.Use(U_1.GetNrows(), U_1.GetNcols(), Matrix_U);
-
-	// Initial predicted state
-	Double_t x_1[n],y_1[n],z_1[n],vx_1[n],vy_1[n],vz_1[n];
-	vx_1[0] = 0.0001;
-	vy_1[0] = 0.0001;
-	vz_1[0] = 0.0001; 
-
-        Double_t Matrix_X[3] = {vx_1[0],vy_1[0],vz_1[0]};
-        X_1.Use(X_1.GetNrows(), X_1.GetNcols(), Matrix_X);
+        //kalman storage
+        TMatrixD x_pred(6,1);
+        TMatrixD P_pred(6,6);
+        TMatrixD K(6,6);
+        TMatrixD H(6,6);
 
 
-        Double_t Matrix_Y[3] ;
-        Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
+       // Initial Values 
+        TMatrixD X_1(6,1);
+        Double_t Matrix_X[6] = {x[0],y[0],z[0],vx[0],vy[0],vz[0]};
+        X_1.Use(6, 1, Matrix_X);
+   
+        TMatrixD Q(6,6);
+        Process_noise(Q);
 
-        Double_t Matrix_H[9] = {1,0,0,0,1,0,0,0,1} ;
-        H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
-
-
-        Double_t Matrix_C[9] = {1,0,0,0,1,0,0,0,1};
-        C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
-
-        Double_t I[36]  = {1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1};
-        I_1.Use(I_1.GetNrows(), I_1.GetNcols(), I);
-	
-	Double_t Matrix_Q[9] = {0,0,0,0,0,0,0,0,0};
-        Q_1.Use(Q_1.GetNrows(), Q_1.GetNcols(), Matrix_Q);
+        TMatrixD P(6,6);
+        Ini_P(P);
 
 
-//	calculating the propagator matrix F. 
-	TMatrixD F(6,1); 
-	//F[0] = 0.0;  // Initial values of F. 
-	
-	for (Int_t i = 0; i<4;i++){	
-		F = h*Jacobian; (I_1 + F[i]*(t[i]-t[0])/h);
-		F.Print();
-	}
+        //Measurement matrice. 
+        //Values of the measurements. Should be modified with real data. this is just my example. 
+        //initial values.
+        Double_t x1[10] = {-393.66,-375.93,-351.04,-328.96,-299.35,-273.36,-245.89,-222.58,-198.03,9.0};
+        Double_t y1[10] ={299.6,302.39,295.04,300.09,294.72,298.61,294.64,284.88,241.27,222.98};
+        
+       //Beacuse only x, y are observed.
+        TMatrixD Z(2,1);
+        TMatrixD Y_1(2,1); //Observation matrix
+        TMatrixD H_1(2,6);
+        TMatrixD R_1(2,2);
+        TMatrixD C_1(2,2);
+
+       //fill the observation matrice.
+         Double_t Matrix_Y[6] ;
+         Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
 
 
+         Double_t Matrix_H[12] =  {1,0,0,0,0,0,1,0,0,0,0,0};
+         H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
 
+        // Error in Measurement.
+         Double_t Matrix_R[4] = {1e-4,0,0,1e-4};
+         R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
 
+         Double_t Matrix_C[4] =  {1,0,0,1};
+         C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
 
-
-	//Calculating the variance of the process and measured moise. 
-	Double_t sum=0.0  ,mean, standardDeviation=0.0,st,variance,covariance;
-	Double_t sum1=0.0 , mean1, standardDeviation1=0.0,st1,variance1,covariance1;
-	Double_t sum2=0.0, mean2, standardDeviation2=0.0,st2,variance2,covariance2;
-
-	Double_t P_n[n],I_vx[n],K_G[n],measurement[10],estimate[10];
-	Double_t P_ny[n],I_vy[n],K_G1[n];
-	Double_t P_nz[n],I_vz[n],K_G2[n];
-
-	for(Int_t i = 0; i < n-1; ++i) {
-		sum += vx[i];
-		sum1 += vy[i];
-		sum2 += vz[i];
-	}
-
-	mean = sum / n-1;
-	mean1 = sum1/n-1;
-	mean2 = sum2/n-1;
-
-	for(Int_t i = 0; i < n; ++i) {
-		standardDeviation += pow(vx[i] - mean, 2);
-		standardDeviation1 += pow(vy[i] - mean1,2);
-		standardDeviation2 += pow(vz[i] - mean2,2);
-	}
-
-  	st = sqrt(standardDeviation / n-1);
-	st1 = sqrt(standardDeviation1 / n-1);
-	st2 = sqrt(standardDeviation2 / n-1);
-
-	variance = st*st;
-	variance1 = st1*st1;
-	variance2 = st2*st2;
-
-
-	P_n[0] =variance*variance;  
-        P_ny[0] = variance1*variance1;
-        P_nz[0] = variance2*variance2;
-
-        Double_t r_x[n],r_y[n],r_z[n];
-        r_x[0] = variance;
-        r_y[0] = variance1;
-        r_z[0] = variance2;
-
-
-
-	//std::cout<< I_vx[0] <<" " <<mean2 <<endl;
-	//Calculating the covariance between vx,vy and vz. 
-
-	 for(Int_t i = 0; i < n-1; ++i) {
-                sum += vx[i];
-                sum1 += vy[i];
-                sum2 += vz[i];
-        }
-
-        mean = sum / n-1;
-        mean1 = sum1/n-1;
-        mean2 = sum2/n-1;
-
-        for(Int_t i = 0; i < n; ++i) {
-                standardDeviation += (vx[i] - mean)* (vy[i] - mean1);
-                standardDeviation1 += (vx[i] - mean)* (vz[i] - mean2);
-                standardDeviation2 += (vy[i] - mean)* (vz[i] - mean1);;
-        }
-
-        covariance = (standardDeviation / n-1);
-        covariance1 = (standardDeviation1 / n-1);
-        covariance2 = (standardDeviation2 / n-1);
-
-
-
-        P_n[0] =covariance;  
-        P_ny[0] = covariance1;
-        P_nz[0] = covariance2;
-
-	//std::cout<<r_x[0]<<" "<<P_n[0]<<std::endl;
-
-
-
-	Double_t Matrix_P[9] = {r_x[0],P_n[0],P_ny[0],P_n[0],r_y[0],P_nz[0],P_ny[0],P_nz[0],r_z[0]} ; // generated errors.
-        P_1.Use(P_1.GetNrows(), P_1.GetNcols(), Matrix_P);
-
-	Double_t Matrix_R[9] ={r_x[0],0,0,0,r_y[0],0,0,0,r_z[0]};          // Error in measurements.
-        R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
-	
-	P_1.Print();
-	for(Int_t i=0; i<n; i++){
-
-        Double_t Matrix_Y[3] = {vx[i],vy[i],vz[i]};
-        Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
 
         //start kalman
+        for (Int_t i=0;i<10;i++){
 
-        x_pred = (F_1 * X_1) ;//+ (B_1*U_1) ;
-        P_pred =  (F_1 *TMatrixD(P_1, TMatrixD::kMultTranspose,F_1))  + Q_1;
+            Double_t Matrix_Y[2] = {x1[i],y1[i],};
+            Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
+
+            x_pred = (F * X_1) ; 
+            P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
 
 
-        //updates
+            //updates
 
 
 
-        K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
+            K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
 
-        Z = C_1*Y_1;
-        X_1 = x_pred + (K *(Z-(H_1*x_pred)));
-        P_1 =(I_1-K*H_1)*P_pred;
+            Z = C_1*Y_1;
+            X_1 = x_pred + (K *(Z-(H_1*x_pred)));
+            P =(I-K*H_1)*P_pred;
 
-        //x_pred.Print();
-        //Z.Print();
-        //std::cout<< z[n] << " " << x_pred << std::endl;
+            //x_pred.Print();
+            //Z.Print();
+            //std::cout<< "measurement" << Z << "EStimate" << x_pred <<  std::endl;
         }
 
 
@@ -694,7 +597,7 @@ void kalman(){
         P_pred.Print();
 	
 
-*/
+
 //	I_1.Print();
 
 
