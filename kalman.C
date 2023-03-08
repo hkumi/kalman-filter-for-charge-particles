@@ -494,23 +494,23 @@ void kalman(){
         TMatrixD F(6,6);
         F.Zero();
         // Compute F1, F2, F3, F4
-        TMatrixD fact(4,1);
-        double Factor[4] = {1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0};
-        fact.Use(fact.GetNrows(), fact.GetNcols(), Factor);
+
+        TArrayD Factor(4); 
+ 
 
         //fact.Print();
-        TMatrixD dt_1(6,1);
+        Double_t dt_1 = 2.3;
 	TMatrixD IplusFi (6,6);
         IplusFi.Zero();
         TArrayD dt(6);
         TMatrixD Fi(6,6);
         for (int i = 0; i < 4; i++) {
-             //dt[i] = (t[i+1]-t[i])/1e-10;
-           //  dt_1.SetMatrixArray(dt.GetArray());
-             IplusFi = I + F* (1e-10);
+             dt[i] = (t[i+1]-t[i])/1e-10;
+             dt_1 = dt[i];
+             IplusFi = I + F* dt_1;
              Fi  = (1e-10)*Jacobi_matrix*IplusFi;
-             F     += Fi;  //fact;
-          // F.Print();
+             F     +=I+ Fi *((i==0 || i==3) ?  1./6 : 1/3);
+  //        F.Print();
        }
 
            // F.Print();
@@ -522,8 +522,8 @@ void kalman(){
         //kalman storage
         TMatrixD x_pred(6,1);
         TMatrixD P_pred(6,6);
-        TMatrixD K(6,6);
-        TMatrixD H(6,6);
+        TMatrixD K(6,3);
+  //      TMatrixD H(6,6);
 
 
        // Initial Values 
@@ -541,43 +541,44 @@ void kalman(){
         //Measurement matrice. 
         //Values of the measurements. Should be modified with real data. this is just my example. 
         //initial values.
-        Double_t x1[10] = {-393.66,-375.93,-351.04,-328.96,-299.35,-273.36,-245.89,-222.58,-198.03,9.0};
-        Double_t y1[10] ={299.6,302.39,295.04,300.09,294.72,298.61,294.64,284.88,241.27,222.98};
-        
-       //Beacuse only x, y are observed.
-        TMatrixD Z(2,1);
-        TMatrixD Y_1(2,1); //Observation matrix
-        TMatrixD H_1(2,6);
-        TMatrixD R_1(2,2);
-        TMatrixD C_1(2,2);
+        Double_t x1[10] = {0.03,0.004,-0.02,-04.93,-05.04,-08.96,-099.35,-073.36,-045.89,-022.58};
+        Double_t y1[10] ={099.6,02.39,05.04,01.09,-02.72,-08.61,-02.64,-01.88,-1.27,02.98};
+        Double_t z1[10] ={49.6,32.39,25.04,30.09,-24.72,-28.61,-24.64,-28.88,24.27,22.98};
+
+       //Beacuse only x, yand z are observed.
+        TMatrixD Z(3,1);
+        TMatrixD Y_1(3,1); //Observation matrix
+        TMatrixD H_1(3,6);
+        TMatrixD R_1(3,3);
+        TMatrixD C_1(3,3);
 
        //fill the observation matrice.
-         Double_t Matrix_Y[6] ;
+         Double_t Matrix_Y[3] ;
          Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
 
 
-         Double_t Matrix_H[12] =  {1,0,0,0,0,0,1,0,0,0,0,0};
+         Double_t Matrix_H[18] =  {1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0};
          H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
 
         // Error in Measurement.
-         Double_t Matrix_R[4] = {1e-4,0,0,1e-4};
+         Double_t Matrix_R[9] = {1e-4,0,0,0,1e-4,0,0,0,1e-4};
          R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
 
-         Double_t Matrix_C[4] =  {1,0,0,1};
+         Double_t Matrix_C[9] =  {1,0,0,0,1,0,0,0,1};
          C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
 
 
         //start kalman
         for (Int_t i=0;i<10;i++){
 
-            Double_t Matrix_Y[2] = {x1[i],y1[i],};
+            Double_t Matrix_Y[3] = {x1[i],y1[i],z1[i]};
             Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
 
             x_pred = (F * X_1) ; 
             P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
+        
 
-
-            //updates
+      //updates
 
 
 
@@ -587,14 +588,14 @@ void kalman(){
             X_1 = x_pred + (K *(Z-(H_1*x_pred)));
             P =(I-K*H_1)*P_pred;
 
-            //x_pred.Print();
+            x_pred.Print();
             //Z.Print();
-            //std::cout<< "measurement" << Z << "EStimate" << x_pred <<  std::endl;
+           // std::cout<< "measurement" << Z << "EStimate" << x_pred <<  std::endl;
         }
 
 
-        x_pred.Print();
-        P_pred.Print();
+//        x_pred.Print();
+  //      P_pred.Print();
 	
 
 
