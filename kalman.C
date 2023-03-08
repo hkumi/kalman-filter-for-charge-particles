@@ -188,7 +188,7 @@ Double_t fz(Double_t t,Double_t vz){
         }
 
 // Define a functions to calculate the Jacobian matrix of the equations.
-void Jacobi_matrice(Double_t Jacobi_matrix[][6]){
+void Jacobi_matrice(TMatrixD &Jacobi_matrix){
 
  // Define the size of the matrix
         Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
@@ -211,48 +211,27 @@ void Jacobi_matrice(Double_t Jacobi_matrix[][6]){
         Ez = -E;
 
 
-        Jacobi_matrix[0][0] = 0;
-        Jacobi_matrix[0][1] = 0;
-        Jacobi_matrix[0][2] = 0;
-        Jacobi_matrix[0][3] = 1*h;
-        Jacobi_matrix[0][4] = 0;
-        Jacobi_matrix[0][5] = 0;
+        Jacobi_matrix.ResizeTo(rows,cols);
+        Jacobi_matrix.Zero();
 
-        Jacobi_matrix[1][0] = 0;
-        Jacobi_matrix[1][1] = 0;
-        Jacobi_matrix[1][2] = 0;
-        Jacobi_matrix[1][3] = 0;
+        Jacobi_matrix(0,3) = 1*h;
+
         Jacobi_matrix[1][4] = 1*h;
-        Jacobi_matrix[1][5] = 0;
 
-	Jacobi_matrix[2][0] = 0;
-        Jacobi_matrix[2][1] = 0;
-        Jacobi_matrix[2][2] = 0;
-        Jacobi_matrix[2][3] = 0;
-        Jacobi_matrix[2][4] = 0;
-        Jacobi_matrix[2][5] = 1*h;
+        Jacobi_matrix(2,5) = 1*h;
 
-        Jacobi_matrix[3][0] = 0;
-        Jacobi_matrix[3][1] = 0;
-        Jacobi_matrix[3][2] = 0;
-        Jacobi_matrix[3][3] = 0;
-        Jacobi_matrix[3][4] = q/m*(Ex+Bz)*h;
-        Jacobi_matrix[3][5] = q/m *(Ex-By)*h;
 
-        Jacobi_matrix[4][0] = 0;
-        Jacobi_matrix[4][1] = 0;
-        Jacobi_matrix[4][2] = 0;
-        Jacobi_matrix[4][3] = q/m * (Ey-Bz)*h;
-        Jacobi_matrix[4][4] = 0;
-        Jacobi_matrix[4][5] = q/m*(Ey+Bx)*h;
- 
+        Jacobi_matrix(3,4) = q/m*(Ex+Bz)*h;
+        Jacobi_matrix(3,5) = q/m *(Ex-By)*h;
 
-	Jacobi_matrix[5][0] = 0;
-        Jacobi_matrix[5][1] = 0;
-        Jacobi_matrix[5][2] = 0;
-        Jacobi_matrix[5][3] = q/m * (Ez+By)*h;
-        Jacobi_matrix[5][4] = q/m * (Ez-Bx)*h;
-        Jacobi_matrix[5][5] = 0;
+
+        Jacobi_matrix(4,3) = q/m * (Ey-Bz)*h;
+        Jacobi_matrix(4,5) = q/m*(Ey+Bx)*h;
+
+
+        Jacobi_matrix(5,3) = q/m * (Ez+By)*h;
+        Jacobi_matrix(5,4) = q/m * (Ez-Bx)*h;
+
 
 
 
@@ -260,52 +239,26 @@ void Jacobi_matrice(Double_t Jacobi_matrix[][6]){
 
 // Define a functions to calculate the process noise matrix Q .
 //this is a 6*6 matrice for my case. 
-void Process_noise(Double_t noise_matrix[][6]){
+void Process_noise(TMatrixD &noise_matrix){
+        // Define the size of the matrix
+        Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
+        Int_t cols = 6; // the number of cols.
 
-        // Define the noise matrix to hold state vectors
+        // Define the  matrixes to hold process noise. 
+        noise_matrix.ResizeTo(rows,cols);
+        noise_matrix.Zero();
 
-        noise_matrix[0][0] = 1e-9;
-        noise_matrix[0][1] = 0;
-        noise_matrix[0][2] = 0;
-        noise_matrix[0][3] = 0;
-        noise_matrix[0][4] = 0;
-        noise_matrix[0][5] = 0;
+        noise_matrix(0,0) = 1e-9;
 
-        noise_matrix[1][0] = 0;
-        noise_matrix[1][1] = 1e-9;
-        noise_matrix[1][2] = 0;
-        noise_matrix[1][3] = 0;
-        noise_matrix[1][4] = 0;
-        noise_matrix[1][5] = 0;
+        noise_matrix(1,1) = 1e-9;
 
-        noise_matrix[2][0] = 0;
-        noise_matrix[2][1] = 0;
-        noise_matrix[2][2] = 1e-9;
-        noise_matrix[2][3] = 0;
-        noise_matrix[2][4] = 0;
-        noise_matrix[2][5] = 0;
+        noise_matrix(2,2) = 1e-9;
 
-        noise_matrix[3][0] = 0;
-        noise_matrix[3][1] = 0;
-        noise_matrix[3][2] = 0;
-        noise_matrix[3][3] = 1e-12;
-        noise_matrix[3][4] = 0;
-        noise_matrix[3][5] = 0;
+        noise_matrix(3,3) = 1e-12;
 
-        noise_matrix[4][0] = 0;
-        noise_matrix[4][1] = 0;
-        noise_matrix[4][2] = 0;
-        noise_matrix[4][3] = 0;
-        noise_matrix[4][4] = 1e-12;
-        noise_matrix[4][5] = 0;
- 
+        noise_matrix(4,4) = 1e-12;
 
-        noise_matrix[5][0] = 0;
-        noise_matrix[5][1] = 0;
-        noise_matrix[5][2] = 0;
-        noise_matrix[5][3] = 0;
-        noise_matrix[5][4] = 0;
-        noise_matrix[5][5] = 1e-12;
+        noise_matrix(5,5) = 1e-12;
 
 
 
@@ -313,56 +266,67 @@ void Process_noise(Double_t noise_matrix[][6]){
 
 // Define a functions to calculate the Initial Covariance P .
 //this is a 6*6 matrice for my case. 
-void Ini_P(Double_t covariance_matrix[][6]){
+void Ini_P(TMatrixD &covariance_matrix){
 
-        // Define the noise matrix to hold state vectors
 
-        covariance_matrix[0][0] = 1e-4;
-        covariance_matrix[0][1] = 0;
-        covariance_matrix[0][2] = 0;
-        covariance_matrix[0][3] = 0;
-        covariance_matrix[0][4] = 0;
-        covariance_matrix[0][5] = 0;
+ // Define the size of the matrix
+        Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
+        Int_t cols = 6; // the number of cols.
 
-        covariance_matrix[1][0] = 0;
-        covariance_matrix[1][1] = 1e-4;
-        covariance_matrix[1][2] = 0;
-        covariance_matrix[1][3] = 0;
-        covariance_matrix[1][4] = 0;
-        covariance_matrix[1][5] = 0;
+        // Define the noise matrix to hold process noise. 
+        covariance_matrix.ResizeTo(rows,cols);
+        covariance_matrix.Zero();
 
-        covariance_matrix[2][0] = 0;
-        covariance_matrix[2][1] = 0;
-        covariance_matrix[2][2] = 1e-4;
-        covariance_matrix[2][3] = 0;
-        covariance_matrix[2][4] = 0;
-        covariance_matrix[2][5] = 0;
 
-        covariance_matrix[3][0] = 0;
-        covariance_matrix[3][1] = 0;
-        covariance_matrix[3][2] = 0;
-        covariance_matrix[3][3] = 1e-7;
-        covariance_matrix[3][4] = 0;
-        covariance_matrix[3][5] = 0;
+        // Define the  matrixes to hold covariance matrix.
 
-        covariance_matrix[4][0] = 0;
-        covariance_matrix[4][1] = 0;
-        covariance_matrix[4][2] = 0;
-        covariance_matrix[4][3] = 0;
-        covariance_matrix[4][4] = 1e-7;
-        covariance_matrix[4][5] = 0;
+        covariance_matrix(0,0) = 1e-4;
  
+        covariance_matrix(1,1) = 1e-4;
 
-        covariance_matrix[5][0] = 0;
-        covariance_matrix[5][1] = 0;
-        covariance_matrix[5][2] = 0;
-        covariance_matrix[5][3] = 0;
-        covariance_matrix[5][4] = 0;
-        covariance_matrix[5][5] = 1e-7;
+        covariance_matrix(2,2) = 1e-4;
+
+        covariance_matrix(3,3) = 1e-7;
+
+        covariance_matrix(4,4) = 1e-7;
+
+        covariance_matrix(5,5) = 1e-7;
 
 
 
 }
+
+//Define the Identity matrix
+void I_matrix(TMatrixD &I){
+
+
+ // Define the size of the matrix
+        Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
+        Int_t cols = 6; // the number of cols.
+
+        // Define the noise matrix to hold process noise. 
+        I.ResizeTo(rows,cols);
+        I.Zero();
+
+
+        // Define the  matrixes to hold Identity matrix.
+
+        I(0,0) = 1;
+ 
+        I(1,1) = 1;
+
+        I(2,2) = 1;
+
+        I(3,3) = 1;
+
+        I(4,4) = 1;
+
+        I(5,5) = 1;
+
+
+
+}
+
 
 
 void kalman(){
@@ -393,7 +357,7 @@ void kalman(){
         
 
         // Define the time step and total time
-        double dt = 0.01;     // time step size
+
         double T = 10.0;      // total time
         Double_t h = 7.49 *TMath::Power(10,-10) ; //in seconds.
 	//double tf=8.18*TMath::Power(10,-7);
@@ -480,21 +444,24 @@ void kalman(){
         Int_t cols = n; // the number of steptime.
 
 	// Define matrix to hold state vectors
-        Double_t  state_matrix[rows][cols];
+        TMatrixD  state_matrix(rows,cols);
 
         // Fill in matrix with state vectors
         for (int i = 0; i < n-1; i++) {
-            state_matrix[0][i] = x[i];
-            state_matrix[1][i] = y[i];
-            state_matrix[2][i] = z[i];
-            state_matrix[3][i] = vx[i];
-            state_matrix[4][i] = vy[i];
-            state_matrix[5][i] = vz[i];
-        }
+            state_matrix(0,i) = x[i];
+            state_matrix(1,i) = y[i];
+            state_matrix(2,i) = z[i];
+            state_matrix(3,i) = vx[i];
+            state_matrix(4,i) = vy[i];
+            state_matrix(5,i) = vz[i];
+        } 
+       
 
-	Double_t Jacobi_matrix[6][6];
+
+	TMatrixD Jacobi_matrix(6,6);
 	Jacobi_matrice(Jacobi_matrix);
-
+        //Jacobi_matrix.Print();
+/*
 
      // Define matrix to hold time derivatives of state vectors
         Double_t  state_dot_matrix[rows][cols-1];
@@ -506,6 +473,7 @@ void kalman(){
             for (int j = 0; j < 6; j++) {
                 state_vector[j] = state_matrix[j][i];
             }
+
     // Multiply Jacobian matrix with state vector to get time derivative of state vector
             for (int j = 0; j < 6; j++) {
                 state_dot_matrix[j][i] = 0;
@@ -514,58 +482,42 @@ void kalman(){
                 }
             }
         }
-
+*/
 
        //Identity matrix.
-        double I[6][6] = {{0}};
-        for (int i = 0; i < 6; i++) {
-            I[i][i] = 1.0;
-         }
-
+       TMatrixD I(6,6);
+       I_matrix(I);
+       //I.Print();
 
         // Calculate propagator matrix using intermediate matrices
         // Initialize F as identity matrix
-        Double_t F[6][6] = {{0}};
-        for (int i = 0; i < 6; i++) {
-            F[i][i] = 1.0;
-        }
-
+        TMatrixD F(6,6);
+        F.UnitMatrix();
         // Compute F1, F2, F3, F4
-        Double_t Fi[4][6][6];
+        TMatrixD fact(4,1);
+        double Factor[4] = {1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0};
+        fact.Use(fact.GetNrows(), fact.GetNcols(), Factor);
+
+        //fact.Print();
+        TMatrixD dt_1(4,1);
+	TMatrixD IplusFi (6,6);
+        IplusFi.Zero();
+        TArrayD dt(4);
+        TArrayD Fi(4);
         for (int i = 0; i < 4; i++) {
-            Double_t IplusFi[6][6] = {0};
-            for (int j = 0; j < 6; j++) {
-                for (int k = 0; k < 6; k++) {
-                    IplusFi[j][k] = I[j][k] + F[i][j][k] * h;
-                   Fi[j][k] = h*Jacobi_matrix[j][k]*IplusFi[j][k];
-
-                }
-            }
-            for (int j = 0; j < 6; j++) {
-                for (int k = 0; k < 6; k++) {
-                    F[i+1][j][k] = Fi[j][k];
-                }
-            }
-        }
-
-        // Compute F as a weighted sum of F1 through F4
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 6; j++) {
-                F[i][j] += (1.0/6.0)*Fi[0][i][j] + (1.0/3.0)*Fi[1][i][j]
-                   + (1.0/3.0)*Fi[2][i][j] + (1.0/6.0)*Fi[3][i][j];
-                }
-        }
- 
-
-        cout << "propagator state matrix:" << endl;
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 6; j++) {
-                cout << F[i][j] << " ";
-            }
-            cout << endl;
-        }
-
-
+             dt[i] = (t[i+1]-t[0])/1e-10;
+             dt_1.SetMatrixArray(dt.GetArray());
+             IplusFi = I + F* dt_1;
+             Fi[i]  = Jacobi_matrix*(1e-10)*IplusFi;
+             F     += Fi[i] * fact;
+       }
+       //dt_1.SetMatrixArray(dt.GetArray());
+            //IplusFi = I + F* h);
+            //Fi[i] = Jacobi_matrix * (h * IplusFi);
+            //F += Fi[i] * Factor;
+            F.Print();
+        //}
+       // IplusFi.Print();
 /*
 	// For starting  kalman filter.
  
