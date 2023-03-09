@@ -21,6 +21,17 @@ using namespace std;
 
 
 //Function for the stopping power .
+ 
+
+
+
+//	c1->cd(1);
+//	auto gr = new TGraph(n,zaxis,re);
+//        gr->GetYaxis()->SetTitle("X cor");
+//        gr->GetXaxis()->SetTitle("Z cor");
+//        gr->Draw("APl");
+
+
 void energyloss(std::string file, TGraph* eLossCurve){
 
 	std::string eLossFileName_;
@@ -333,6 +344,15 @@ void kalman(){
 
          TH2F *rx_vs_ry = new TH2F("rx_vs_ry", "rungex_vs_rungey", 720, 0, -3, 1000, 0, 2.0);
          TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
+
+         TH2F *vx_vs_vy = new TH2F("vx_vs_rvy", "rungevx_vs_rungevy", 720, 0, -3, 1000, 0, 2.0);
+//         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
+
+         TH2F *propagatorx_vs_propagatory = new TH2F("propagatorx_vs_propagatory", "propagatorx_vs_propagatory", 720, 0, -3, 1000, 0, 2.0);
+  //       TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
+
+
+
          TCanvas *c1 = new TCanvas();
          c1->Divide(2, 2);
          c1->Draw();
@@ -444,7 +464,7 @@ void kalman(){
 
         // std::cout<<x[i+1]<<" "<<y[i+1]<<" "<<z[i+1]<<endl;
 
-        rx_vs_ry->Fill(vx[i],vy[i]);
+        rx_vs_ry->Fill(x[i],y[i]);
         }
         
         // Define the size of the matrix
@@ -456,12 +476,12 @@ void kalman(){
 
         // Fill in matrix with state vectors
         for (int i = 0; i < n-1; i++) {
-      //      state_matrix(0,i) = x[i];
-        //    state_matrix(1,i) = y[i];
-          //  state_matrix(2,i) = z[i];
-            //state_matrix(3,i) = vx[i];
-            //state_matrix(4,i) = vy[i];
-           // state_matrix(5,i) = vz[i];
+            state_matrix(0,i) = x[i];
+            state_matrix(1,i) = y[i];
+            state_matrix(2,i) = z[i];
+            state_matrix(3,i) = vx[i];
+            state_matrix(4,i) = vy[i];
+            state_matrix(5,i) = vz[i];
         } 
        
 
@@ -469,28 +489,7 @@ void kalman(){
 	TMatrixD Jacobi_matrix(6,6);
 	Jacobi_matrice(Jacobi_matrix);
         //Jacobi_matrix.Print();
-/*
 
-     // Define matrix to hold time derivatives of state vectors
-        Double_t  state_dot_matrix[rows][cols-1];
-
-     // Calculate time derivatives of state vectors
-        for (int i = 0; i < cols-1; i++) {
-    // Extract state vector at time t
-            Double_t state_vector[6];
-            for (int j = 0; j < 6; j++) {
-                state_vector[j] = state_matrix[j][i];
-            }
-
-    // Multiply Jacobian matrix with state vector to get time derivative of state vector
-            for (int j = 0; j < 6; j++) {
-                state_dot_matrix[j][i] = 0;
-                for (int k = 0; k < 6; k++) {
-                    state_dot_matrix[j][i] += Jacobi_matrix[j][k] * state_vector[k];
-                }
-            }
-        }
-*/
 
        //Identity matrix.
        TMatrixD I(6,6);
@@ -521,11 +520,84 @@ void kalman(){
   //        F.Print();
        }
 
+        // Define matrix to hold time derivatives of state vectors
+        TMatrixD  state_dot_matrix(rows,cols-1);
+
+     // Calculate time derivatives of state vectors
+        for (int i = 0; i < cols-1; i++) {
+    // Extract state vector at time t
+            TMatrixD state_vector(6,1);
+            for (int j = 0; j < 6; j++) {
+                state_vector(j,0) = state_matrix(j,i);
+            }
+
+    // Multiply Jacobian matrix with state vector to get time derivative of state vector
+             TMatrixD state_dot_vector = F * state_vector;
+            propagatorx_vs_propagatory->Fill(state_dot_vector(0,0), state_dot_vector(1,0));
+        }
+
+
            // F.Print();
         //}
        // IplusFi.Print();
 
 // Needs rethink!!!!
+/*
+// to open my data and write into a file.
+       ifstream file;
+       ofstream writefile;
+
+        file.open("testspiral_2.out" ,ios::in);
+        if (file.fail())
+        {
+        std::cout << "File failed to open"; 
+        std::cout<<endl;
+        return(1);
+        }
+        writefile.open("testspiral.txt");
+
+        
+        std::vector<Float_t>  xcor;
+        Float_t  x1=0.0;
+        std::vector<Float_t>  ycor;
+        Float_t y1=0.0;
+        std::vector<Float_t>  zcor;
+        Float_t  z1=0.0;
+        std::vector<Float_t>  tcor;
+        Float_t t1=0.0;
+        std::vector<Float_t>  amp;
+        Float_t  amp1; 
+        std::vector<Float_t>  inter;
+        Float_t inter1;
+        std::vector<Float_t>  mh;
+        Float_t  mh1;
+        std::vector<Float_t>  inter2;
+        Float_t inter21;
+
+
+        Int_t np = 0;
+
+         while(!file.eof())
+        {
+                file >>t1>>x1>>y1>>z1>>amp1>>inter1>>mh1>>inter21;
+                xcor.push_back(x1);
+                ycor.push_back(y1);
+                zcor.push_back(z1);
+                tcor.push_back(t1);
+                amp.push_back(amp1);
+                inter.push_back(inter1);
+                mh.push_back(mh1);
+                inter2.push_back(inter21);
+
+                np++;
+        }
+
+
+// We basically just transfer the cordinates into array..
+        Int_t n2 = tcor.size();
+        Double_t xaxis[n],yaxis[n],zaxis[n];
+  
+
 
         //kalman storage
         TMatrixD x_pred(6,1);
@@ -558,9 +630,9 @@ void kalman(){
         //Measurement matrice. 
         //Values of the measurements. Should be modified with real data. this is just my example. 
         //initial values.
-        Double_t x1[11] = {0,0.03,0.004,-0.02,-04.93,-05.04,-08.96,-099.35,-073.36,-045.89,-022.58};
-        Double_t y1[11] ={0,099.6,02.39,05.04,01.09,-02.72,-08.61,-02.64,-01.88,-1.27,02.98};
-        Double_t z1[11] ={0,49.6,32.39,25.04,30.09,-24.72,-28.61,-24.64,-28.88,24.27,22.98};
+      //  Double_t x1[11] = {0,0.03,0.004,-0.02,-04.93,-05.04,-08.96,-099.35,-073.36,-045.89,-022.58};
+        //Double_t y1[11] ={0,099.6,02.39,05.04,01.09,-02.72,-08.61,-02.64,-01.88,-1.27,02.98};
+        //Double_t z1[11] ={0,49.6,32.39,25.04,30.09,-24.72,-28.61,-24.64,-28.88,24.27,22.98};
 
        //Beacuse only x, yand z are observed.
         TMatrixD Z(3,1);
@@ -586,9 +658,12 @@ void kalman(){
 
 
         //start kalman
-        for (Int_t i=0;i<n-1;++i){
+        for (Int_t i=0;i<n2;++i){
+            xaxis[i] = xcor.at(i);
+            zaxis[i] = zcor.at(i);
+            yaxis[i]  = ycor.at(i);
 
-            Double_t Matrix_Y[3] = {x1[i],y1[i],z1[i]};
+            Double_t Matrix_Y[3] = {xaxis[i],yaxis[i],zaxis[i]};
             Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
 
             x_pred = (F * X_1) ; 
@@ -614,7 +689,7 @@ void kalman(){
            // std::cout<< "measurement" << Z << "EStimate" << x_pred <<  std::endl;
 
         }
-
+*/
         
         
 
@@ -623,10 +698,16 @@ void kalman(){
         c1->cd(1);
         rx_vs_ry->Draw();
         c1->cd(2);
-        kx_vs_ky->SetLineColor(kRed);
-        kx_vs_ky->SetMarkerStyle(20);
-        kx_vs_ky->SetLineWidth(1);
-        kx_vs_ky->Draw();
+        propagatorx_vs_propagatory->Draw();
+        //c1->cd(2);
+        //kx_vs_ky->SetLineColor(kRed);
+      //  kx_vs_ky->SetMarkerStyle(20);
+        //kx_vs_ky->SetLineWidth(1);
+        //kx_vs_ky->Draw();
+
+  //      file.close();
+    //    writefile.close();
+        return(0);
 
 /*
 
