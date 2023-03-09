@@ -331,8 +331,15 @@ void I_matrix(TMatrixD &I){
 
 void kalman(){
 
- 	TCanvas *c1 = new TCanvas("c1","Particle in a magnetic field",500,600);
-        c1->Divide(2,2);
+         TH2F *rx_vs_ry = new TH2F("rx_vs_ry", "rungex_vs_rungey", 720, 0, -3, 1000, 0, 2.0);
+         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
+         TCanvas *c1 = new TCanvas();
+         c1->Divide(2, 2);
+         c1->Draw();
+
+
+ 	//TCanvas *c1 = new TCanvas("c1","Particle in a magnetic field",500,600);
+        //c1->Divide(2,2);
 
         const Int_t n = 1000;
 
@@ -437,8 +444,9 @@ void kalman(){
 
         // std::cout<<x[i+1]<<" "<<y[i+1]<<" "<<z[i+1]<<endl;
 
-
+        rx_vs_ry->Fill(vx[i],vy[i]);
         }
+        
         // Define the size of the matrix
         Int_t rows = 6; // the number of state variables
         Int_t cols = n; // the number of steptime.
@@ -448,12 +456,12 @@ void kalman(){
 
         // Fill in matrix with state vectors
         for (int i = 0; i < n-1; i++) {
-            state_matrix(0,i) = x[i];
-            state_matrix(1,i) = y[i];
-            state_matrix(2,i) = z[i];
-            state_matrix(3,i) = vx[i];
-            state_matrix(4,i) = vy[i];
-            state_matrix(5,i) = vz[i];
+      //      state_matrix(0,i) = x[i];
+        //    state_matrix(1,i) = y[i];
+          //  state_matrix(2,i) = z[i];
+            //state_matrix(3,i) = vx[i];
+            //state_matrix(4,i) = vy[i];
+           // state_matrix(5,i) = vz[i];
         } 
        
 
@@ -527,6 +535,15 @@ void kalman(){
 
 
        // Initial Values 
+        // Define the initial conditions
+         x[0] = 0.0;      // initial x position
+         y[0] = 0.0;      // initial y position
+         z[0] = 0.0;      // initial z position
+         vx[0] = 1.0;     // initial x velocity
+         vy[0] = 1.0;     // initial y velocity
+         vz[0] = 1.0;     // initial z velocity
+
+
         TMatrixD X_1(6,1);
         Double_t Matrix_X[6] = {x[0],y[0],z[0],vx[0],vy[0],vz[0]};
         X_1.Use(6, 1, Matrix_X);
@@ -541,9 +558,9 @@ void kalman(){
         //Measurement matrice. 
         //Values of the measurements. Should be modified with real data. this is just my example. 
         //initial values.
-        Double_t x1[10] = {0.03,0.004,-0.02,-04.93,-05.04,-08.96,-099.35,-073.36,-045.89,-022.58};
-        Double_t y1[10] ={099.6,02.39,05.04,01.09,-02.72,-08.61,-02.64,-01.88,-1.27,02.98};
-        Double_t z1[10] ={49.6,32.39,25.04,30.09,-24.72,-28.61,-24.64,-28.88,24.27,22.98};
+        Double_t x1[11] = {0,0.03,0.004,-0.02,-04.93,-05.04,-08.96,-099.35,-073.36,-045.89,-022.58};
+        Double_t y1[11] ={0,099.6,02.39,05.04,01.09,-02.72,-08.61,-02.64,-01.88,-1.27,02.98};
+        Double_t z1[11] ={0,49.6,32.39,25.04,30.09,-24.72,-28.61,-24.64,-28.88,24.27,22.98};
 
        //Beacuse only x, yand z are observed.
         TMatrixD Z(3,1);
@@ -569,7 +586,7 @@ void kalman(){
 
 
         //start kalman
-        for (Int_t i=0;i<10;i++){
+        for (Int_t i=0;i<n-1;++i){
 
             Double_t Matrix_Y[3] = {x1[i],y1[i],z1[i]};
             Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
@@ -584,23 +601,32 @@ void kalman(){
 
             K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
 
-            Z = C_1*Y_1;
+            Z = C_1* Y_1;
             X_1 = x_pred + (K *(Z-(H_1*x_pred)));
             P =(I-K*H_1)*P_pred;
 
-            x_pred.Print();
+            std::cout << "the predicted state:" <<std::endl;
+            x_pred.Print(); 
+            std::cout << "the predicted covariance:" <<std::endl; 
+            P_pred.Print();
+             kx_vs_ky->Fill(x_pred(0,0), x_pred(1,0)); 
             //Z.Print();
            // std::cout<< "measurement" << Z << "EStimate" << x_pred <<  std::endl;
+
         }
 
-
-//        x_pred.Print();
-  //      P_pred.Print();
-	
+        
+        
 
 
-//	I_1.Print();
 
+        c1->cd(1);
+        rx_vs_ry->Draw();
+        c1->cd(2);
+        kx_vs_ky->SetLineColor(kRed);
+        kx_vs_ky->SetMarkerStyle(20);
+        kx_vs_ky->SetLineWidth(1);
+        kx_vs_ky->Draw();
 
 /*
 
