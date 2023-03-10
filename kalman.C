@@ -343,7 +343,7 @@ void I_matrix(TMatrixD &I){
 void kalman(){
 
          TH2F *rx_vs_ry = new TH2F("rx_vs_ry", "rungex_vs_rungey", 720, 0, -3, 1000, 0, 2.0);
-         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
+         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 1000, 0, 2.0);
 
          TH2F *vx_vs_vy = new TH2F("vx_vs_rvy", "rungevx_vs_rungevy", 720, 0, -3, 1000, 0, 2.0);
 //         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
@@ -351,6 +351,8 @@ void kalman(){
          TH2F *propagatorx_vs_propagatory = new TH2F("propagatorx_vs_propagatory", "propagatorx_vs_propagatory", 720, 0, -3, 1000, 0, 2.0);
   //       TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
 
+        TH3F *R_projection = new TH3F("R_projection", "runge_projection", 720, 5.0, -3, 100, 0, 10.0,50, 0.0, 10.0);	
+        TH3F *F_projection = new TH3F("F_projection", "propagator_projection", 720, 5.0, -3, 100, 0, 10.0,50, 0.0, 10.0);
 
 
          TCanvas *c1 = new TCanvas();
@@ -375,18 +377,17 @@ void kalman(){
         Double_t k1vz[n],k2vz[n],k3vz[n],k4vz[n];
 
        // Define the initial conditions
-         x[0] = 0.0;      // initial x position
-         y[0] = 0.0;      // initial y position
-         z[0] = 0.0;      // initial z position
-         vx[0] = 1.0;     // initial x velocity
-         vy[0] = 1.0;     // initial y velocity
-         vz[0] = 1.0;     // initial z velocity
+         x[0] = 0.0;      // initial x position   unit in m.
+         y[0] = 0.0;      // initial y position  unit in m
+         z[0] = 0.0;      // initial z position  unit in m
+         vx[0] = 20e6;     // initial x velocity unit in m/s
+         vy[0] = 20e6;     // initial y velocity unit in m/s
+         vz[0] = 20e6;     // initial z velocity unit in m/s.
         
 
-        // Define the time step and total time
+        // Define the time step 
 
-        double T = 10.0;      // total time
-        Double_t h = 7.49 *TMath::Power(10,-10) ; //in seconds.
+        Double_t h = TMath::Power(10,-10) ; //in seconds.
 	//double tf=8.18*TMath::Power(10,-7);
 	//double t0=0.0;
 
@@ -465,6 +466,7 @@ void kalman(){
         // std::cout<<x[i+1]<<" "<<y[i+1]<<" "<<z[i+1]<<endl;
 
         rx_vs_ry->Fill(x[i],y[i]);
+        R_projection->Fill(x[i],y[i],z[i]);
         }
         
         // Define the size of the matrix
@@ -499,44 +501,59 @@ void kalman(){
         // Calculate propagator matrix using intermediate matrices
         // Initialize F as identity matrix
         TMatrixD F(6,6);
-        F.Zero();
+        F.UnitMatrix();
         // Compute F1, F2, F3, F4
-
-        TArrayD Factor(4); 
- 
-
-        //fact.Print();
-        Double_t dt_1 = 2.3;
+        Double_t dt_1 = 1e-10;
 	TMatrixD IplusFi (6,6);
         IplusFi.Zero();
-        TArrayD dt(6);
         TMatrixD Fi(6,6);
+        TArrayD dt(6);
+/*
+        // Loop over time steps
+        for (int i = 0; i < n-1; i++) {
+
+            // Update the propagator matrix F
+            F = F + Jacobi_matrix*dt_1/2;
+
+            // Propagate the state vector
+            state_matrix = F*state_matrix;
+            //Fill in histogram with the values.
+            propagatorx_vs_propagatory->Fill(state_matrix(0,0), state_matrix(1,0));
+            F_projection->Fill(state_matrix(0,0),state_matrix(1,0),state_matrix(2,0));
+        }
+
+
+*/
         for (int i = 0; i < 4; i++) {
              dt[i] = (t[i+1]-t[i])/1e-10;
              dt_1 = dt[i];
-             IplusFi = I + F* dt_1;
+             IplusFi = F* dt_1;
              Fi  = (1e-10)*Jacobi_matrix*IplusFi;
-             F     +=I+ Fi *((i==0 || i==3) ?  1./6 : 1/3);
+             F     +=I+ Fi *((i==0 || i==3) ?  1.0/6.0 : 1.0/3.0);
   //        F.Print();
-       }
+        }
 
         // Define matrix to hold time derivatives of state vectors
         TMatrixD  state_dot_matrix(rows,cols-1);
 
      // Calculate time derivatives of state vectors
         for (int i = 0; i < cols-1; i++) {
-    // Extract state vector at time t
+    // Extract state vector at time t. 
             TMatrixD state_vector(6,1);
             for (int j = 0; j < 6; j++) {
                 state_vector(j,0) = state_matrix(j,i);
             }
 
     // Multiply Jacobian matrix with state vector to get time derivative of state vector
-             TMatrixD state_dot_vector = F * state_vector;
+            TMatrixD state_dot_vector = F * state_vector;
             propagatorx_vs_propagatory->Fill(state_dot_vector(0,0), state_dot_vector(1,0));
+            F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
         }
 
 
+
+
+          
            // F.Print();
         //}
        // IplusFi.Print();
@@ -699,6 +716,10 @@ void kalman(){
         rx_vs_ry->Draw();
         c1->cd(2);
         propagatorx_vs_propagatory->Draw();
+        c1->cd(3);
+        R_projection->Draw();
+        c1->cd(4);
+        F_projection->Draw();
         //c1->cd(2);
         //kx_vs_ky->SetLineColor(kRed);
       //  kx_vs_ky->SetMarkerStyle(20);
