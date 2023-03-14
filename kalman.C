@@ -16,28 +16,13 @@
 using namespace std;
 
 
-// RK4 for alpha particle moving in electric and magnetic field.
-//declaration of the functions.
-
-
-//Function for the stopping power.
-
-//function to read energy loss table. 
 void energyloss(std::string file, TGraph* eLossCurve){
 
 	std::string eLossFileName_;
 	eLossFileName_ = file;
 
-	Float_t ener = 0;
-	TString enerUnit = "";
-	Float_t dEdx_elec = 0;
-	Float_t dEdx_nucl = 0;
-	Float_t range = 0;
-	TString rangeUnit = "";
-	Float_t lonStra = 0;
-	TString lonStraUnit = "";
-	Float_t latStra = 0;
-	TString latStraUnit = "";
+        Float_t ener = 0;
+        Float_t stp = 0;
 
 	std::ifstream elossfile;
 
@@ -56,7 +41,7 @@ void energyloss(std::string file, TGraph* eLossCurve){
 	//std::cout << " Processing energy loss data file " << eLossFileName_ << "\n";
 	std::string line;
 
-	for (auto i = 0; i < 3; ++i) {
+	for (auto i = 0; i < 2; ++i) {
         	std::getline(elossfile,line);
         //	std::cout << line << "\n";
     	}
@@ -64,30 +49,48 @@ void energyloss(std::string file, TGraph* eLossCurve){
 
 	while (std::getline(elossfile, line)) {
 		std::istringstream data(line);
-		data >> ener >> enerUnit >> dEdx_elec >> dEdx_nucl >> range >> rangeUnit >> lonStra >> lonStraUnit >> latStra >> latStraUnit ;
-      		if(enerUnit.Contains("keV"))
-        	ener/=1000.0;
-
- //     std::cout<<ener<<" "<<enerUnit.Data()<<" "<<dEdx_elec<<" "<<dEdx_nucl<<" "<<range<<" "<<rangeUnit.Data()<<" "<<lonStra<<" "<<lonStraUnit.Data()<<" "<<latStra<<" "<<latStraUnit<<"\n";
-      	//	if (ener > maxKinEnergy_)
-        //	maxKinEnergy_ = ener;
-      		eLossCurve->SetPoint(eLossCurve->GetN(),ener,dEdx_elec+dEdx_nucl);
-      	//	elosscurve->SetPoint(elosscurve->GetN(),ener,dEdx_elec+dEdx_nucl);
-      //std::cout<<eLossCurve_->GetN()<<" "<<elosscurve->GetN()<<"\n";//NB: eLossCurve_ only valid if only one AtFitter::AtGenfit object is created.
-         //	if(elossfile->eof()) break;
+		data >> ener >> stp ;
+      		eLossCurve->SetPoint(eLossCurve->GetN(),ener,stp);
     	}
-
 
   } catch (...) {
   }
 
 }
 
+Double_t GetEnergy(Double_t vx, Double_t vy, Double_t vz){
+    Double_t vv, bet, gamma1, Energy;
+    Double_t c = 3.0*TMath::Power(10, 8);
+
+    vv = TMath::Sqrt(TMath::Power((vx),2)+TMath::Power((vy),2)+TMath::Power((vz),2));
+    bet = vv/c;
+cout<<bet<<endl;
+    gamma1 = TMath::Sqrt(1/(1-TMath::Power(bet,2)));
+    Energy = (gamma1-1)*931.494028;
+    return Energy;
+}
+
+Double_t StoppingPower(Double_t Energy){
+    Double_t stpSim;
+    TGraph* eLossCurve = new TGraph();
+    energyloss("stpHydrogen.txt", eLossCurve);
+    Double_t  gasMediumDensity_ = 8.988e-5;   //g/cm3 at 1 bar
+
+    stpSim = eLossCurve->Eval(Energy);
+    stpSim*=1.6021773349e-13;
+    stpSim*= gasMediumDensity_*100;
+    stpSim/= 1.6726*TMath::Power(10,-27);
+
+
+    return stpSim;
+}
 
 // Function that calculates the derivative of the position and velocity of the particle
 
 Double_t  dxdt(double t,double vx, double vy, Double_t vz){
-
+        
+        Double_t Energy = GetEnergy(vx, vy, vz);
+        Double_t st = StoppingPower(Energy);
 	Double_t Ex,Ey,Ez,f1;            	//Electric field in V/m. 
 	Double_t Bx,By,Bz;	      	// magnetic field in Tesla
 	Double_t rr,az,po;
@@ -101,16 +104,25 @@ Double_t  dxdt(double t,double vx, double vy, Double_t vz){
         Ex = 0;
 	Ey = 0;			// Electric field in the x and  direction in V/m.
 	Ez = -E;                        // Electric field in the z direction. 
+        
 
+        rr = TMath::Sqrt(TMath::Power(vx,2)+TMath::Power(vy,2)+TMath::Power(vz,2));
+        az = TMath::ATan2(vy,vx);
+        po = TMath::ACos(vz/rr);
 
-	f1 =  q/m * (Ex + vy*Bz-vz*By); //-s*TMath::Sin(po)*TMath::Cos(az) ;                                    //dxdt with energyloss compensation.
+	f1 =  q/m * (Ex + vy*Bz-vz*By) - st*TMath::Sin(po)*TMath::Cos(az); //-s*TMath::Sin(po)*TMath::Cos(az) ;                                    //dxdt with energyloss compensation.
 
+        double bro = Bz * rr / TMath::Sin(po)/ 1000.0;
+cout<<Energy<<endl;
+//cout<<bro<<endl;
 	//std::cout<<Ex <<" "<< vy<<" "<<vz << " " <<By<< " "<< f1<<std::endl; 
         return f1;
 
         }
 
 double  dydt(double t,double vx, double vy, Double_t vz){
+Double_t Energy = GetEnergy(vx, vy, vz);
+        Double_t st = StoppingPower(Energy);
 	Double_t Ex,Ey,Ez,f2;              //Electric field in V/m. 
         Double_t Bx,By,Bz;              // magnetic field in Tesla
         Double_t q = 1.6022*TMath::Power(10,-19);   //charge of the particle in C
@@ -130,14 +142,19 @@ double  dydt(double t,double vx, double vy, Double_t vz){
         po = TMath::ACos(vz/rr);
  
 
-        f2 =  q/m * (Ey + vz*Bx - vx*Bz);// - s*TMath::Sin(po)*TMath::Sin(az); 
+       f2 =  q/m * (Ey + vz*Bx - vx*Bz) - st*TMath::Sin(po)*TMath::Sin(az); 
 
+        double bro = Bz * rr / TMath::Sin(po)/ 1000.0;
+//cout<<bro<<endl;
+cout<<Energy<<endl;
 	//std::cout<<f2<<std::endl;
         return f2;
         }
 
 double  dzdt(double t,double vx, double vy,Double_t vz){
-	Double_t Ex,Ey,Ez,f3;              //Electric field in V/m. 
+Double_t Energy = GetEnergy(vx, vy, vz);
+        Double_t st = StoppingPower(Energy);	
+        Double_t Ex,Ey,Ez,f3;              //Electric field in V/m. 
         Double_t Bx,By,Bz;              // magnetic field in Tesla
         Double_t q = 1.6022*pow(10,-19);   //charge of the particle in eV
         Double_t B=3.0;                 // Applied magnetic field.
@@ -157,7 +174,10 @@ double  dzdt(double t,double vx, double vy,Double_t vz){
         po = TMath::ACos(vz/rr);
  
 
-        f3 =  q/m * (Ez + vx*By - vy*Bx);// - s*TMath::Cos(po);
+        f3 =  q/m * (Ez + vx*By - vy*Bx) - st*TMath::Cos(po);
+        double bro = Bz * rr / TMath::Sin(po)/ 1000.0;
+//cout<<bro<<endl;
+cout<<Energy<<endl<<endl;
 	//std::cout <<r<< " " << TMath::Power(vy,2) + TMath::Power(vx,2) + TMath::Power(vz,2)<< " " << TMath::Power(vz,2) <<  std::endl; 
         return f3;
         }
@@ -195,11 +215,12 @@ void Jacobi_matrice(TMatrixD &Jacobi_matrix){
  // Define the size of the matrix
         Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
         Int_t cols = 6; // the number of cols.
-        Double_t h = TMath::Power(10,-10) ; //in seconds.
+        Double_t h = 7.49 *TMath::Power(10,-10) ; //in seconds.
 
         // Define the jacobi matrix to hold state vectors
         Double_t Ex,Ey,Ez,f1;                   //Electric field in V/m. 
         Double_t Bx,By,Bz;              // magnetic field in Tesla
+        Double_t rr,az,po;
         Double_t q = 1.6022*TMath::Power(10,-19);       //charge of the particle(proton) in (C)
         Double_t m = 1.6726*TMath::Power(10,-27);       // mass of the particle in kg
         Double_t B=3.0;                 // Applied magnetic field (T).
@@ -349,6 +370,10 @@ void kalman(){
          c1->Divide(2, 2);
          c1->Draw();
 
+
+ 	//TCanvas *c1 = new TCanvas("c1","Particle in a magnetic field",500,600);
+        //c1->Divide(2,2);
+
         const Int_t n = 1000;
 
 	Double_t t[n],vx[n],vy[n],vz[n];
@@ -366,29 +391,50 @@ void kalman(){
          x[0] = 0.0;      // initial x position   unit in m.
          y[0] = 0.0;      // initial y position  unit in m
          z[0] = 0.0;      // initial z position  unit in m
-         vx[0] = 20e6;     // initial x velocity unit in m/s
-         vy[0] = 20e6;     // initial y velocity unit in m/s
-         vz[0] = 20e6;     // initial z velocity unit in m/s.
+         vx[0] = 10e6;     // initial x velocity unit in m/s
+         vy[0] = 10e6;     // initial y velocity unit in m/s
+         vz[0] = 10e6;     // initial z velocity unit in m/s.
         
 
         // Define the time step 
 
         Double_t h = TMath::Power(10,-10) ; //in seconds.
+	//double tf=8.18*TMath::Power(10,-7);
+	//double t0=0.0;
+
 
 	//Graph to evaluate Energy loss
-	Double_t  gasMediumDensity_ = 0.0153236;   //g/cm3
-	Double_t p[n],s[n],vv[n],bet[n],gamma1[n],Energy[n];
+	//Double_t  gasMediumDensity_ = 8.375e-5;   //g/cm3
+	Double_t p[n],s[n],vv[n];
 	TGraph* eLossCurve = new TGraph();
 
-       energyloss("van.txt", eLossCurve);
+       energyloss("stpHydrogen.txt", eLossCurve);
 
-	//eLossCurve->Draw();
+	//eLossCurve->Draw();  // Plotting energy vs stopping power
 
 	//std::cout<<x[0] << " " << y[0] << " " << z[0] << std::endl;
 	//Start Rk4. 
 
 
-	for(Int_t i=0;i <n-1;  i++){
+	//for(Int_t i=0;i <n-1;  i++){
+        Double_t Energy = GetEnergy(vx[0],vy[0],vz[0]);
+        Int_t i = 0;
+
+/*----------------------------------------*/
+cout<<endl;
+cout<<endl;
+cout<<"+----------------+"<<endl;
+cout<<" Running kalman.C"<<endl;
+cout<<"+----------------+"<<endl;
+
+cout<<"Initial Energy value: "<< Energy << " MeV" <<endl;
+cout<<endl;
+cout<<endl;
+/*----------------------------------------*/
+
+
+
+        while (Energy>0.1){
 	   k1x[i] = fx(t[i],vx[i]);
            k1y[i] = fy(t[i],vy[i]);
            k1z[i] = fz(t[i],vz[i]);
@@ -410,7 +456,7 @@ void kalman(){
            k3y[i] = fy(t[i]+h*0.5,vy[i]+0.5*h*k2y[i]);
            k3z[i] = fz(t[i]+h*0.5,vz[i]+0.5*h*k2z[i]);
 
-           k3vx[i] = dxdt(t[i]+h*0.5,vx[i]+k2vx[i]*0.5*h,vy[i]+k2vy[i]*h*0.5,k2vz[i]*vz[i]*h*0.5);
+           k3vx[i] = dxdt(t[i]+h*0.5,vx[i]+k2vx[i]*0.5*h,vy[i]+k2vy[i]*h*0.5,vz[i] + k2vz[i]*h*0.5);
            k3vy[i] = dydt(t[i]+h*0.5,vx[i]+k2vx[i]*h*0.5, vy[i]+k2vy[i]*h*0.5,vz[i]+k2vz[i]*h*0.5);
            k3vz[i] = dzdt(t[i]+h*0.5,vx[i]+k2vx[i]*h*0.5, vy[i]+k2vy[i]*h*0.5, vz[i]+k2vz[i]*h*0.5);
 
@@ -433,7 +479,7 @@ void kalman(){
 
           t[i+1]= t[i] + h;
 
-//	  std::cout<<vx[i]<< " "<<vy[i]<<" " << vz[i] << " " << h << endl;
+	 // std::cout<<vx[i]<< " "<<vy[i]<<" " << vz[i] << " " << h << endl;
 
           
           vx[i] = vx[i+1];
@@ -450,23 +496,26 @@ void kalman(){
 
         rx_vs_ry->Fill(x[i],y[i]);
         R_projection->Fill(x[i],y[i],z[i]);
+
+        Energy = GetEnergy(vx[i],vy[i],vz[i]);
+        i+=1;
         }
-        
+
         // Define the size of the matrix
         Int_t rows = 6; // the number of state variables
-        Int_t cols = n; // the number of steptime.
+        Int_t cols = i; // the number of steptime.
 
 	// Define matrix to hold state vectors
         TMatrixD  state_matrix(rows,cols);
 
         // Fill in matrix with state vectors
-        for (int i = 0; i < n; i++) {
-            state_matrix(0,i) = x[i];
-            state_matrix(1,i) = y[i];
-            state_matrix(2,i) = z[i];
-            state_matrix(3,i) = vx[i];
-            state_matrix(4,i) = vy[i];
-            state_matrix(5,i) = vz[i];
+        for (int j = 0; j < i; j++) {
+            state_matrix(0,j) = x[j];
+            state_matrix(1,j) = y[j];
+            state_matrix(2,j) = z[j];
+            state_matrix(3,j) = vx[j];
+            state_matrix(4,j) = vy[j];
+            state_matrix(5,j) = vz[j];
         } 
        
 
@@ -490,24 +539,39 @@ void kalman(){
 	TMatrixD IplusFi (6,6);
         IplusFi.Zero();
         TMatrixD Fi(6,6);
-        // Loop over time steps   
+        TArrayD dt(6);
+/*
+        // Loop over time steps
+        for (int i = 0; i < n-1; i++) {
 
-        for (int i = 0; i < 4; i++) {
-             IplusFi = F*dt_1;
-             Fi  = Jacobi_matrix*IplusFi;
-             F     += Fi* ((i==0 || i==3) ?  1.0/6.0 : 1.0/3.0);
-          //F.Print();
+            // Update the propagator matrix F
+            F = F + Jacobi_matrix*dt_1/2;
+
+            // Propagate the state vector
+            state_matrix = F*state_matrix;
+            //Fill in histogram with the values.
+            propagatorx_vs_propagatory->Fill(state_matrix(0,0), state_matrix(1,0));
+            F_projection->Fill(state_matrix(0,0),state_matrix(1,0),state_matrix(2,0));
         }
 
-       // Define matrix to hold time derivatives of state vectors
-        TMatrixD  state_dot_matrix(rows,cols);
+
+*/
+        for (int j = 0; j < 4; j++) {
+             IplusFi = F* dt_1;
+             Fi  = (1e-10)*Jacobi_matrix*IplusFi;
+             F     += Fi *((j==0 || j==3) ?  1.0/6.0 : 1.0/3.0);
+  //        F.Print();
+        }
+
+        // Define matrix to hold time derivatives of state vectors
+        TMatrixD  state_dot_matrix(rows,cols-1);
 
      // Calculate time derivatives of state vectors
-        for (int i = 0; i < cols-1; i++) {
+        for (int k = 0; k < cols; k++) {
     // Extract state vector at time t. 
             TMatrixD state_vector(6,1);
             for (int j = 0; j < 6; j++) {
-                state_vector(j,0) = state_matrix(j,i);
+                state_vector(j,0) = state_matrix(j,k);
             }
 
     // Multiply Jacobian matrix with state vector to get time derivative of state vector
@@ -515,9 +579,17 @@ void kalman(){
             propagatorx_vs_propagatory->Fill(state_dot_vector(0,0), state_dot_vector(1,0));
             F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
         }
-       
 
 
+
+
+          
+           // F.Print();
+        //}
+       // IplusFi.Print();
+
+// Needs rethink!!!!
+/*
 // to open my data and write into a file.
        ifstream file;
        ofstream writefile;
@@ -664,20 +736,27 @@ void kalman(){
            // std::cout<< "measurement" << Z << "EStimate" << x_pred <<  std::endl;
 
         }
-
+*/
         
         
-
 
 
         c1->cd(1);
         rx_vs_ry->Draw();
+        rx_vs_ry->SetMarkerStyle(21);
+        rx_vs_ry->SetMarkerSize(0.3);
         c1->cd(2);
         propagatorx_vs_propagatory->Draw();
+        propagatorx_vs_propagatory->SetMarkerStyle(21);
+        propagatorx_vs_propagatory->SetMarkerSize(0.3);
         c1->cd(3);
         R_projection->Draw();
+        R_projection->SetMarkerStyle(21);
+        R_projection->SetMarkerSize(0.3);
         c1->cd(4);
         F_projection->Draw();
+        F_projection->SetMarkerStyle(21);
+        F_projection->SetMarkerSize(0.3);
         //c1->cd(2);
         //kx_vs_ky->SetLineColor(kRed);
       //  kx_vs_ky->SetMarkerStyle(20);
