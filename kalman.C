@@ -20,18 +20,9 @@ using namespace std;
 //declaration of the functions.
 
 
-//Function for the stopping power .
- 
+//Function for the stopping power.
 
-
-
-//	c1->cd(1);
-//	auto gr = new TGraph(n,zaxis,re);
-//        gr->GetYaxis()->SetTitle("X cor");
-//        gr->GetXaxis()->SetTitle("Z cor");
-//        gr->Draw("APl");
-
-
+//function to read energy loss table. 
 void energyloss(std::string file, TGraph* eLossCurve){
 
 	std::string eLossFileName_;
@@ -204,12 +195,11 @@ void Jacobi_matrice(TMatrixD &Jacobi_matrix){
  // Define the size of the matrix
         Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
         Int_t cols = 6; // the number of cols.
-        Double_t h = 7.49 *TMath::Power(10,-10) ; //in seconds.
+        Double_t h = TMath::Power(10,-10) ; //in seconds.
 
         // Define the jacobi matrix to hold state vectors
         Double_t Ex,Ey,Ez,f1;                   //Electric field in V/m. 
         Double_t Bx,By,Bz;              // magnetic field in Tesla
-        Double_t rr,az,po;
         Double_t q = 1.6022*TMath::Power(10,-19);       //charge of the particle(proton) in (C)
         Double_t m = 1.6726*TMath::Power(10,-27);       // mass of the particle in kg
         Double_t B=3.0;                 // Applied magnetic field (T).
@@ -359,10 +349,6 @@ void kalman(){
          c1->Divide(2, 2);
          c1->Draw();
 
-
- 	//TCanvas *c1 = new TCanvas("c1","Particle in a magnetic field",500,600);
-        //c1->Divide(2,2);
-
         const Int_t n = 1000;
 
 	Double_t t[n],vx[n],vy[n],vz[n];
@@ -388,9 +374,6 @@ void kalman(){
         // Define the time step 
 
         Double_t h = TMath::Power(10,-10) ; //in seconds.
-	//double tf=8.18*TMath::Power(10,-7);
-	//double t0=0.0;
-
 
 	//Graph to evaluate Energy loss
 	Double_t  gasMediumDensity_ = 0.0153236;   //g/cm3
@@ -450,7 +433,7 @@ void kalman(){
 
           t[i+1]= t[i] + h;
 
-	 // std::cout<<vx[i]<< " "<<vy[i]<<" " << vz[i] << " " << h << endl;
+//	  std::cout<<vx[i]<< " "<<vy[i]<<" " << vz[i] << " " << h << endl;
 
           
           vx[i] = vx[i+1];
@@ -477,7 +460,7 @@ void kalman(){
         TMatrixD  state_matrix(rows,cols);
 
         // Fill in matrix with state vectors
-        for (int i = 0; i < n-1; i++) {
+        for (int i = 0; i < n; i++) {
             state_matrix(0,i) = x[i];
             state_matrix(1,i) = y[i];
             state_matrix(2,i) = z[i];
@@ -507,34 +490,17 @@ void kalman(){
 	TMatrixD IplusFi (6,6);
         IplusFi.Zero();
         TMatrixD Fi(6,6);
-        TArrayD dt(6);
-/*
-        // Loop over time steps
-        for (int i = 0; i < n-1; i++) {
+        // Loop over time steps   
 
-            // Update the propagator matrix F
-            F = F + Jacobi_matrix*dt_1/2;
-
-            // Propagate the state vector
-            state_matrix = F*state_matrix;
-            //Fill in histogram with the values.
-            propagatorx_vs_propagatory->Fill(state_matrix(0,0), state_matrix(1,0));
-            F_projection->Fill(state_matrix(0,0),state_matrix(1,0),state_matrix(2,0));
-        }
-
-
-*/
         for (int i = 0; i < 4; i++) {
-             dt[i] = (t[i+1]-t[i])/1e-10;
-             dt_1 = dt[i];
-             IplusFi = F* dt_1;
-             Fi  = (1e-10)*Jacobi_matrix*IplusFi;
-             F     +=I+ Fi *((i==0 || i==3) ?  1.0/6.0 : 1.0/3.0);
-  //        F.Print();
+             IplusFi = F*dt_1;
+             Fi  = Jacobi_matrix*IplusFi;
+             F     += Fi* ((i==0 || i==3) ?  1.0/6.0 : 1.0/3.0);
+          //F.Print();
         }
 
-        // Define matrix to hold time derivatives of state vectors
-        TMatrixD  state_dot_matrix(rows,cols-1);
+       // Define matrix to hold time derivatives of state vectors
+        TMatrixD  state_dot_matrix(rows,cols);
 
      // Calculate time derivatives of state vectors
         for (int i = 0; i < cols-1; i++) {
@@ -549,17 +515,9 @@ void kalman(){
             propagatorx_vs_propagatory->Fill(state_dot_vector(0,0), state_dot_vector(1,0));
             F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
         }
+       
 
 
-
-
-          
-           // F.Print();
-        //}
-       // IplusFi.Print();
-
-// Needs rethink!!!!
-/*
 // to open my data and write into a file.
        ifstream file;
        ofstream writefile;
@@ -706,7 +664,7 @@ void kalman(){
            // std::cout<< "measurement" << Z << "EStimate" << x_pred <<  std::endl;
 
         }
-*/
+
         
         
 
