@@ -109,8 +109,7 @@ void read_file(std::vector<TString> files,Int_t nEvents){
          TString mcFileNameHead = files[iFile];
          TString mcFileNameTail = ".root";
          TString mcFileName = mcFileNameHead + mcFileNameTail;
-   std:
-      cout << " Analysis of simulation file  " << mcFileName << endl;
+         std::cout << " Analysis of simulation file  " << mcFileName << endl;
 
          TFile *file = new TFile(mcFileName.Data(), "READ");
          TTree *tree = (TTree *)file->Get("cbmsim");
@@ -135,65 +134,67 @@ void read_file(std::vector<TString> files,Int_t nEvents){
 
                   //   std::cout << " === Track " << track.GetTrackID() << " with "
                     // << track.GetHitClusterArray()->size() << " clusters "  << "\n";
-                     if ( track.GetHitClusterArray()->size() < 5) {
+                    if ( track.GetHitClusterArray()->size() < 5) {
                      //std::cout << " Track is noise or has less than 5 clusters! "  << "\n";
-                     continue;
-                     }
+                       continue;
+                    }
+                    auto hitClusterArray =  track.GetHitClusterArray();
 
-                     Double_t theta = track.GetGeoTheta();
-                     Double_t rad   = track.GetGeoRadius();
-                     Double_t B_f = 3.0;
-                     double brho = B_f * rad / TMath::Sin(theta) / 1000.0;
-                     double ener = 0;
-                     Double_t Am = 1.007; // atomic mass of proton in u. 
-                     Double_t Z = 1.0;
-                     Get_Energy(Am, 1.0, brho, ener);
-                     std::cout<<endl;
-                     std::cout<< " Energy of this proton is:" << ener<<" Mev"<< " with brho: " << brho <<" Tm " <<endl;
-                     std::cout<<endl;
+                    Double_t theta = track.GetGeoTheta();
+                    Double_t rad   = track.GetGeoRadius();
+                    Double_t B_f = 3.0;
+                    double brho = B_f * rad / TMath::Sin(theta) / 1000.0;
+                    double ener = 0;
+                    Double_t Am = 1.007; // atomic mass of proton in u. 
+                    Double_t Z = 1.0;
+                    Get_Energy(Am, 1.0, brho, ener);
+                    //std::cout<<endl;
+                    //std::cout<< " Energy of this proton is:" << ener<<" Mev"<< " with brho: " << brho <<" Tm " <<endl;
+                    //std::cout<<endl;
 
                     Double_t p = brho * Z * 2.99792458;      //In MeV/c.
-                    auto hitClusterArray =  track.GetHitClusterArray();
                     std::vector<int> eventNumbers = {263};
                     std::vector<Double_t> plane; 
                   // Iterate over event numbers and access the corresponding events
-                  if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
-                     std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
-                     for (auto iclus = 1; iclus < hitClusterArray->size(); ++iclus) {
-                          auto Cluster1 = hitClusterArray->at(iclus);
-                          auto Cluster2 = hitClusterArray->at(iclus-1);
+                    if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
+                       std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
+                       for (auto iclus = 1; iclus < hitClusterArray->size(); ++iclus) {
+                           auto Cluster1 = hitClusterArray->at(iclus);
+                           auto Cluster2 = hitClusterArray->at(iclus-1);
 
-                          auto inipos = Cluster1.GetPosition();
-                          auto secpos = Cluster2.GetPosition();
+                           auto inipos = Cluster1.GetPosition();
+                           auto secpos = Cluster2.GetPosition();
 
 
-                          Double_t phi = TMath::ATan2(secpos.Y()-inipos.Y(),inipos.X()-secpos.X());//calculate angle between the>
-                          auto px = p * cos(phi) * sin(theta);
-                          auto py = p * sin(phi) * sin(theta);
-                          auto pz = p * cos(theta);
-                         std::cout << px << " ," << py << " ," << pz << std::endl;  
+                           Double_t phi = TMath::ATan2(secpos.Y()-inipos.Y(),inipos.X()-secpos.X());//calculate angle between the>
+                           auto px = p * cos(phi) * sin(theta);
+                           auto py = p * sin(phi) * sin(theta);
+                           auto pz = p * cos(theta);
+                           std::cout<< "momentum of the particle in the x,y,z direction is:" << endl;
+                           std::cout << px << " ," << py << " ," << pz << std::endl;  
 
-                          // Plane equation: ax + by + cz + d = 0
-                         double a = px;
-                         double b = py;
-                         double c = pz;
+                           // Plane equation: ax + by + cz + d = 0
+                           double a = px;
+                           double b = py;
+                           double c = pz;
 
-                         double d = -a * inipos.X() - b * inipos.Y() -c*inipos.Z();
-
-                         std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
-                         // Check plane equation
-                         Double_t x1 = inipos.X();
-                         Double_t y1 = inipos.Y();
-                         Double_t z1 = inipos.Z();
-                         Double_t result1 = a*x1 + b*y1 + c*z1 + d;
+                           double d = -a * inipos.X() - b * inipos.Y() -c*inipos.Z();
+                           std::cout<<" the first planes are:" << endl;
+                           std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
+                           std::cout<<endl;
+                           // Check plane equation
+                           Double_t x1 = inipos.X();
+                           Double_t y1 = inipos.Y();
+                           Double_t z1 = inipos.Z();
+                           Double_t result1 = a*x1 + b*y1 + c*z1 + d;
                           //std::cout<<"with posx,y,z" << x1 << " ," << y1 << " ," << z1 << endl;
                           //std::cout<<"the results are" << endl;
                          //std::cout << "Result1: " << result1 << std::endl;
-                         std::cout<<endl;
+                           std::cout<<endl;
 
-                     }
+                       }
 
-                  }
+                    }
 
 
                 }
