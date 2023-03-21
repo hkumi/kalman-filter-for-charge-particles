@@ -13,7 +13,48 @@
 #include <string>
 
 #include <TMatrixD.h>
+
+#include "TString.h"
+#include "TFile.h"
+#include "TTree.h"
+#include "TClonesArray.h"
+
+#include <algorithm>
+#include<limits>
+
+
 using namespace std;
+
+
+
+void Get_Energy(Double_t M,Double_t IZ,Double_t BRHO,Double_t &E);
+
+
+std::vector<AtHitCluster> fHitClusterArray; //< Clusterized hits container
+
+std::vector<AtHitCluster> *GetHitClusterArray() {
+
+
+         return &fHitClusterArray;
+
+
+ }
+
+
+void  Get_Energy(Double_t M,Double_t IZ,Double_t BRHO,Double_t &E){
+
+  //Energy per nucleon
+
+  Float_t  AM=931.5;
+  Float_t X=BRHO/0.1439*IZ/M;
+  X=pow(X,2);
+  X=2.*AM*X;
+  X=X+pow(AM,2);
+  E=TMath::Sqrt(X)-AM;
+
+
+  }
+
 
 
 void energyloss(std::string file, TGraph* eLossCurve){
@@ -58,18 +99,129 @@ void energyloss(std::string file, TGraph* eLossCurve){
 
 }
 
+
+void read_file(std::vector<TString> files,Int_t nEvents){
+     std::vector<TString> dataFileName_;
+     dataFileName_ = files;
+
+     for (auto iFile = 0; iFile < files.size(); ++iFile) {
+
+         TString mcFileNameHead = files[iFile];
+         TString mcFileNameTail = ".root";
+         TString mcFileName = mcFileNameHead + mcFileNameTail;
+   std:
+      cout << " Analysis of simulation file  " << mcFileName << endl;
+
+         TFile *file = new TFile(mcFileName.Data(), "READ");
+         TTree *tree = (TTree *)file->Get("cbmsim");
+
+         tree = (TTree *)file->Get("cbmsim");
+       // TBranch *branch = tree->GetBranch("AtTpcPoint");
+         TTreeReader Reader1("cbmsim", file);
+         TTreeReaderValue<TClonesArray> eventArray(Reader1, "AtPatternEvent");
+         for (Int_t i = 0; i < nEvents; i++) {
+             std::cout<<endl;
+             //std::cout << " Event Number : " << i << "\n";
+
+             Reader1.Next();
+
+             AtPatternEvent *patternEvent = (AtPatternEvent *)eventArray->At(0);
+
+             if (patternEvent) {
+                std::vector<AtTrack> &patternTrackCand = patternEvent->GetTrackCand();
+                //std::cout<<endl;
+               // std::cout << " Number of pattern tracks " << patternTrackCand.size() << "\n";
+                for (auto track : patternTrackCand) {
+
+                  //   std::cout << " === Track " << track.GetTrackID() << " with "
+                    // << track.GetHitClusterArray()->size() << " clusters "  << "\n";
+                     if ( track.GetHitClusterArray()->size() < 5) {
+                     //std::cout << " Track is noise or has less than 5 clusters! "  << "\n";
+                     continue;
+                     }
+
+                     Double_t theta = track.GetGeoTheta();
+                     Double_t rad   = track.GetGeoRadius();
+                     Double_t B_f = 3.0;
+                     double brho = B_f * rad / TMath::Sin(theta) / 1000.0;
+                     double ener = 0;
+                     Double_t Am = 1.007; // atomic mass of proton in u. 
+                     Double_t Z = 1.0;
+                     Get_Energy(Am, 1.0, brho, ener);
+                     std::cout<<endl;
+                     std::cout<< " Energy of this proton is:" << ener<<" Mev"<< " with brho: " << brho <<" Tm " <<endl;
+                     std::cout<<endl;
+
+                    Double_t p = brho * Z * 2.99792458;      //In MeV/c.
+                    auto hitClusterArray =  track.GetHitClusterArray();
+                    std::vector<int> eventNumbers = {263};
+                    std::vector<Double_t> plane; 
+                  // Iterate over event numbers and access the corresponding events
+                  if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
+                     std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
+                     for (auto iclus = 1; iclus < hitClusterArray->size(); ++iclus) {
+                          auto Cluster1 = hitClusterArray->at(iclus);
+                          auto Cluster2 = hitClusterArray->at(iclus-1);
+
+                          auto inipos = Cluster1.GetPosition();
+                          auto secpos = Cluster2.GetPosition();
+
+
+                          Double_t phi = TMath::ATan2(secpos.Y()-inipos.Y(),inipos.X()-secpos.X());//calculate angle between the>
+                          auto px = p * cos(phi) * sin(theta);
+                          auto py = p * sin(phi) * sin(theta);
+                          auto pz = p * cos(theta);
+                         std::cout << px << " ," << py << " ," << pz << std::endl;  
+
+                          // Plane equation: ax + by + cz + d = 0
+                         double a = px;
+                         double b = py;
+                         double c = pz;
+
+                         double d = -a * inipos.X() - b * inipos.Y() -c*inipos.Z();
+
+                         std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
+                         // Check plane equation
+                         Double_t x1 = inipos.X();
+                         Double_t y1 = inipos.Y();
+                         Double_t z1 = inipos.Z();
+                         Double_t result1 = a*x1 + b*y1 + c*z1 + d;
+                          //std::cout<<"with posx,y,z" << x1 << " ," << y1 << " ," << z1 << endl;
+                          //std::cout<<"the results are" << endl;
+                         //std::cout << "Result1: " << result1 << std::endl;
+                         std::cout<<endl;
+
+                     }
+
+                  }
+
+
+                }
+             }
+
+
+         }
+
+
+     }
+
+
+}
+
+
+
+
 Double_t GetEnergy(Double_t vx, Double_t vy, Double_t vz){
     Double_t vv, bet, gamma1, Energy;
     Double_t c = 3.0*TMath::Power(10, 8);
 
     vv = TMath::Sqrt(TMath::Power((vx),2)+TMath::Power((vy),2)+TMath::Power((vz),2));
     bet = vv/c;
-cout<<bet<<endl;
+//cout<<bet<<endl;
     gamma1 = TMath::Sqrt(1/(1-TMath::Power(bet,2)));
     Energy = (gamma1-1)*931.494028;
     return Energy;
 }
-
 Double_t StoppingPower(Double_t Energy){
     Double_t stpSim;
     TGraph* eLossCurve = new TGraph();
@@ -113,7 +265,7 @@ Double_t  dxdt(double t,double vx, double vy, Double_t vz){
 	f1 =  q/m * (Ex + vy*Bz-vz*By) - st*TMath::Sin(po)*TMath::Cos(az); //-s*TMath::Sin(po)*TMath::Cos(az) ;                                    //dxdt with energyloss compensation.
 
         double bro = Bz * rr / TMath::Sin(po)/ 1000.0;
-cout<<Energy<<endl;
+//cout<<Energy<<endl;
 //cout<<bro<<endl;
 	//std::cout<<Ex <<" "<< vy<<" "<<vz << " " <<By<< " "<< f1<<std::endl; 
         return f1;
@@ -146,7 +298,7 @@ Double_t Energy = GetEnergy(vx, vy, vz);
 
         double bro = Bz * rr / TMath::Sin(po)/ 1000.0;
 //cout<<bro<<endl;
-cout<<Energy<<endl;
+//cout<<Energy<<endl;
 	//std::cout<<f2<<std::endl;
         return f2;
         }
@@ -177,7 +329,7 @@ Double_t Energy = GetEnergy(vx, vy, vz);
         f3 =  q/m * (Ez + vx*By - vy*Bx) - st*TMath::Cos(po);
         double bro = Bz * rr / TMath::Sin(po)/ 1000.0;
 //cout<<bro<<endl;
-cout<<Energy<<endl<<endl;
+//cout<<Energy<<endl<<endl;
 	//std::cout <<r<< " " << TMath::Power(vy,2) + TMath::Power(vx,2) + TMath::Power(vz,2)<< " " << TMath::Power(vz,2) <<  std::endl; 
         return f3;
         }
@@ -362,8 +514,8 @@ void kalman(){
          TH2F *propagatorx_vs_propagatory = new TH2F("propagatorx_vs_propagatory", "propagatorx_vs_propagatory", 720, 0, -3, 1000, 0, 2.0);
   //       TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
 
-        TH3F *R_projection = new TH3F("R_projection", "runge_projection", 720, 5.0, -3, 100, 0, 10.0,50, 0.0, 10.0);	
-        TH3F *F_projection = new TH3F("F_projection", "propagator_projection", 720, 5.0, -3, 100, 0, 10.0,50, 0.0, 10.0);
+        TH3F *R_projection = new TH3F("R_projection", "runge_projection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);	
+        TH3F *F_projection = new TH3F("F_projection", "propagator_projection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);
 
 
          TCanvas *c1 = new TCanvas();
@@ -427,9 +579,9 @@ cout<<"+----------------+"<<endl;
 cout<<" Running kalman.C"<<endl;
 cout<<"+----------------+"<<endl;
 
-cout<<"Initial Energy value: "<< Energy << " MeV" <<endl;
-cout<<endl;
-cout<<endl;
+//cout<<"Initial Energy value: "<< Energy << " MeV" <<endl;
+//cout<<endl;
+//cout<<endl;
 /*----------------------------------------*/
 
 
@@ -481,7 +633,6 @@ cout<<endl;
 
 	 // std::cout<<vx[i]<< " "<<vy[i]<<" " << vz[i] << " " << h << endl;
 
-          
           vx[i] = vx[i+1];
 	  vz[i] = vz[i+1];
           vy[i] = vy[i+1];
@@ -492,7 +643,7 @@ cout<<endl;
 
           t[i] = t[i+1];
 
-        // std::cout<<x[i+1]<<" "<<y[i+1]<<" "<<z[i+1]<<endl;
+        // std::cout<<x[i+1]<<" "<<y[i+1]<<" "<<vz[i+1]<<endl;
 
         rx_vs_ry->Fill(x[i],y[i]);
         R_projection->Fill(x[i],y[i],z[i]);
@@ -516,8 +667,7 @@ cout<<endl;
             state_matrix(3,j) = vx[j];
             state_matrix(4,j) = vy[j];
             state_matrix(5,j) = vz[j];
-        } 
-       
+        }
 
 
 	TMatrixD Jacobi_matrix(6,6);
@@ -539,28 +689,12 @@ cout<<endl;
 	TMatrixD IplusFi (6,6);
         IplusFi.Zero();
         TMatrixD Fi(6,6);
-        TArrayD dt(6);
-/*
-        // Loop over time steps
-        for (int i = 0; i < n-1; i++) {
-
-            // Update the propagator matrix F
-            F = F + Jacobi_matrix*dt_1/2;
-
-            // Propagate the state vector
-            state_matrix = F*state_matrix;
-            //Fill in histogram with the values.
-            propagatorx_vs_propagatory->Fill(state_matrix(0,0), state_matrix(1,0));
-            F_projection->Fill(state_matrix(0,0),state_matrix(1,0),state_matrix(2,0));
-        }
-
-
-*/
+        
         for (int j = 0; j < 4; j++) {
              IplusFi = F* dt_1;
              Fi  = (1e-10)*Jacobi_matrix*IplusFi;
              F     += Fi *((j==0 || j==3) ?  1.0/6.0 : 1.0/3.0);
-  //        F.Print();
+          //F.Print();
         }
 
         // Define matrix to hold time derivatives of state vectors
@@ -574,71 +708,31 @@ cout<<endl;
                 state_vector(j,0) = state_matrix(j,k);
             }
 
-    // Multiply Jacobian matrix with state vector to get time derivative of state vector
+    // Multiply propagator matrix with state vector to get time derivative of state vector
             TMatrixD state_dot_vector = F * state_vector;
             propagatorx_vs_propagatory->Fill(state_dot_vector(0,0), state_dot_vector(1,0));
             F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
+          // state_vector.Print();
         }
 
-
-
-
-          
-           // F.Print();
-        //}
-       // IplusFi.Print();
 
 // Needs rethink!!!!
+
+        TCanvas *c2 = new TCanvas();
+        c2->Divide(2, 2);
+        c2->Draw();
+
+
+ //to read the data file.
+
+
+        FairRunAna *run = new FairRunAna();
+        std::vector<TString> files = {"data/output_digi"};
+        Int_t nEvents = 1000;
+        read_file(files, nEvents);
+        std::vector<int> eventNumbers = {263};
+
 /*
-// to open my data and write into a file.
-       ifstream file;
-       ofstream writefile;
-
-        file.open("testspiral_2.out" ,ios::in);
-        if (file.fail())
-        {
-        std::cout << "File failed to open"; 
-        std::cout<<endl;
-        return(1);
-        }
-        writefile.open("testspiral.txt");
-
-        
-        std::vector<Float_t>  xcor;
-        Float_t  x1=0.0;
-        std::vector<Float_t>  ycor;
-        Float_t y1=0.0;
-        std::vector<Float_t>  zcor;
-        Float_t  z1=0.0;
-        std::vector<Float_t>  tcor;
-        Float_t t1=0.0;
-        std::vector<Float_t>  amp;
-        Float_t  amp1; 
-        std::vector<Float_t>  inter;
-        Float_t inter1;
-        std::vector<Float_t>  mh;
-        Float_t  mh1;
-        std::vector<Float_t>  inter2;
-        Float_t inter21;
-
-
-        Int_t np = 0;
-
-         while(!file.eof())
-        {
-                file >>t1>>x1>>y1>>z1>>amp1>>inter1>>mh1>>inter21;
-                xcor.push_back(x1);
-                ycor.push_back(y1);
-                zcor.push_back(z1);
-                tcor.push_back(t1);
-                amp.push_back(amp1);
-                inter.push_back(inter1);
-                mh.push_back(mh1);
-                inter2.push_back(inter21);
-
-                np++;
-        }
-
 
 // We basically just transfer the cordinates into array..
         Int_t n2 = tcor.size();
@@ -736,7 +830,7 @@ cout<<endl;
            // std::cout<< "measurement" << Z << "EStimate" << x_pred <<  std::endl;
 
         }
-*/
+
         
         
 
@@ -757,58 +851,17 @@ cout<<endl;
         F_projection->Draw();
         F_projection->SetMarkerStyle(21);
         F_projection->SetMarkerSize(0.3);
-        //c1->cd(2);
-        //kx_vs_ky->SetLineColor(kRed);
-      //  kx_vs_ky->SetMarkerStyle(20);
-        //kx_vs_ky->SetLineWidth(1);
-        //kx_vs_ky->Draw();
-
+        c2->cd(1);
+        kx_vs_ky->Draw();
+        kx_vs_ky->SetMarkerStyle(21);
+        kx_vs_ky->SetLineWidth(1);
+        kx_vs_ky->Draw();
+*/
   //      file.close();
     //    writefile.close();
         return(0);
 
-/*
 
-  c1->cd(1);
-  auto r1=new TGraph2D(n,vx,vy,vz);
-  r1->SetTitle("Particle motion; X axis;Y axis; Z axis");
-//  gStyle->SetPalette(1);
-  //gr1->SetMarkerStyle(20);
-  r1->Draw(" LINE");
-
-
-   c1->cd(2);
-
-   TGraph *gr1 = new TGraph (n, vz,vx);
-   gr1->GetXaxis()->SetTitle("z position");
-   gr1->GetYaxis()->SetTitle("x Position");
-   gr1->GetXaxis()->CenterTitle();
-   gr1->GetYaxis()->CenterTitle();
-   gr1->Draw("AL");
-
-
- c1->cd(3);
-
-   TGraph *g = new TGraph (n, vz,vy);
-   g->GetXaxis()->SetTitle("z position");
-   g->GetYaxis()->SetTitle("y Position");
-   g->GetXaxis()->CenterTitle();
-   g->GetYaxis()->CenterTitle();
-   g->Draw("AL");
-
- c1->cd(4);
-
-   TGraph *gn = new TGraph (n, vx,vy);
-   gn->GetXaxis()->SetTitle("x position");
-   gn->GetYaxis()->SetTitle("y Position");
-   gn->GetXaxis()->CenterTitle();
-   gn->GetYaxis()->CenterTitle();
-   gn->Draw("AL");
-
-
-*/
-
-//elossfile.close();
 }
 
 
