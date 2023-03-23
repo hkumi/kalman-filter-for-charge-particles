@@ -100,118 +100,6 @@ void energyloss(std::string file, TGraph* eLossCurve){
 }
 
 
-void read_file(std::vector<TString> files,Int_t nEvents){
-     std::vector<TString> dataFileName_;
-     dataFileName_ = files;
-
-     for (auto iFile = 0; iFile < files.size(); ++iFile) {
-
-         TString mcFileNameHead = files[iFile];
-         TString mcFileNameTail = ".root";
-         TString mcFileName = mcFileNameHead + mcFileNameTail;
-         std::cout << " Analysis of simulation file  " << mcFileName << endl;
-
-         TFile *file = new TFile(mcFileName.Data(), "READ");
-         TTree *tree = (TTree *)file->Get("cbmsim");
-
-         tree = (TTree *)file->Get("cbmsim");
-       // TBranch *branch = tree->GetBranch("AtTpcPoint");
-         TTreeReader Reader1("cbmsim", file);
-         TTreeReaderValue<TClonesArray> eventArray(Reader1, "AtPatternEvent");
-         for (Int_t i = 0; i < nEvents; i++) {
-             std::cout<<endl;
-             //std::cout << " Event Number : " << i << "\n";
-
-             Reader1.Next();
-
-             AtPatternEvent *patternEvent = (AtPatternEvent *)eventArray->At(0);
-
-             if (patternEvent) {
-                std::vector<AtTrack> &patternTrackCand = patternEvent->GetTrackCand();
-                //std::cout<<endl;
-               // std::cout << " Number of pattern tracks " << patternTrackCand.size() << "\n";
-                for (auto track : patternTrackCand) {
-
-                  //   std::cout << " === Track " << track.GetTrackID() << " with "
-                    // << track.GetHitClusterArray()->size() << " clusters "  << "\n";
-                    if ( track.GetHitClusterArray()->size() < 5) {
-                     //std::cout << " Track is noise or has less than 5 clusters! "  << "\n";
-                       continue;
-                    }
-                    auto hitClusterArray =  track.GetHitClusterArray();
-
-                    Double_t theta = track.GetGeoTheta();
-                    Double_t rad   = track.GetGeoRadius();
-                    Double_t B_f = 3.0;
-                    double brho = B_f * rad / TMath::Sin(theta) / 1000.0;
-                    double ener = 0;
-                    Double_t Am = 1.007; // atomic mass of proton in u. 
-                    Double_t Z = 1.0;
-                    Get_Energy(Am, 1.0, brho, ener);
-                    //std::cout<<endl;
-                    //std::cout<< " Energy of this proton is:" << ener<<" Mev"<< " with brho: " << brho <<" Tm " <<endl;
-                    //std::cout<<endl;
-
-                    Double_t p = brho * Z * 2.99792458;      //In MeV/c.
-                    std::vector<int> eventNumbers = {263};
-                    std::vector<Double_t> plane; 
-                  // Iterate over event numbers and access the corresponding events
-                    if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
-                       std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
-                       for (auto iclus = 1; iclus < hitClusterArray->size(); ++iclus) {
-                           auto Cluster1 = hitClusterArray->at(iclus);
-                           auto Cluster2 = hitClusterArray->at(iclus-1);
-
-                           auto inipos = Cluster1.GetPosition();
-                           auto secpos = Cluster2.GetPosition();
-
-
-                           Double_t phi = TMath::ATan2(secpos.Y()-inipos.Y(),inipos.X()-secpos.X());//calculate angle between the>
-                           auto px = p * cos(phi) * sin(theta);
-                           auto py = p * sin(phi) * sin(theta);
-                           auto pz = p * cos(theta);
-                           std::cout<< "momentum of the particle in the x,y,z direction is:" << endl;
-                           std::cout << px << " ," << py << " ," << pz << std::endl;  
-
-                           // Plane equation: ax + by + cz + d = 0
-                           double a = px;
-                           double b = py;
-                           double c = pz;
-
-                           double d = -a * inipos.X() - b * inipos.Y() -c*inipos.Z();
-                           std::cout<<" the first planes are:" << endl;
-                           std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
-                           std::cout<<endl;
-                           // Check plane equation
-                           Double_t x1 = inipos.X();
-                           Double_t y1 = inipos.Y();
-                           Double_t z1 = inipos.Z();
-                           Double_t result1 = a*x1 + b*y1 + c*z1 + d;
-                          //std::cout<<"with posx,y,z" << x1 << " ," << y1 << " ," << z1 << endl;
-                          //std::cout<<"the results are" << endl;
-                         //std::cout << "Result1: " << result1 << std::endl;
-                           std::cout<<endl;
-
-                       }
-
-                    }
-
-
-                }
-             }
-
-
-         }
-
-
-     }
-
-
-}
-
-
-
-
 Double_t GetEnergy(Double_t vx, Double_t vy, Double_t vz){
     Double_t vv, bet, gamma1, Energy;
     Double_t c = 3.0*TMath::Power(10, 8);
@@ -716,22 +604,128 @@ cout<<"+----------------+"<<endl;
           // state_vector.Print();
         }
 
+/*
+c1->cd(1);
+        rx_vs_ry->Draw();
+        rx_vs_ry->SetMarkerStyle(21);
+        rx_vs_ry->SetMarkerSize(0.3);
+        c1->cd(2);
+        propagatorx_vs_propagatory->Draw();
+        propagatorx_vs_propagatory->SetMarkerStyle(21);
+        propagatorx_vs_propagatory->SetMarkerSize(0.3);
+        c1->cd(3);
+        R_projection->Draw();
+        R_projection->SetMarkerStyle(21);
+        R_projection->SetMarkerSize(0.3);
+        c1->cd(4);
+        F_projection->Draw();
+        F_projection->SetMarkerStyle(21);
+        F_projection->SetMarkerSize(0.3);
+
+*/
 
 // Needs rethink!!!!
 
         TCanvas *c2 = new TCanvas();
         c2->Divide(2, 2);
         c2->Draw();
+        TH2F *angle_vs_energy = new TH2F("angle_vs_energy", "angle_vs_energy", 720, 0, 179, 1000, 0, 100.0);
+        TH2F *Z_vs_Y = new TH2F("Z_vs_Y", "energy_vs_clusterangle", 720, 0, -3, 1000, 0, 2.0);
+        TH2F *energy_vs_Zorb = new TH2F("energy_vs_Zorb", "energy_vs_Zorb", 720, 0, -5, 100, 0, 5.0);
+        TH1F* zorbHist = new TH1F("zorbHist", "Zorb Distribution", 100, 0, 1200);
+        TH2F *angle_vs_energy_pattern =new TH2F("angle_vs_energy_pattern", "angle_vs_energy_pattern", 720, 0, 179, 1000, 0, 100.0);
 
 
  //to read the data file.
+
+/*----------------------------------------*/
+cout<<endl;
+cout<<endl;
+cout<<"+----------------+"<<endl;
+cout<<" Testing the kalman Filter "<<endl;
+cout<<"+----------------+"<<endl;
+
+//cout<<"Initial Energy value: "<< Energy << " MeV" <<endl;
+//cout<<endl;
+//cout<<endl;
+/*----------------------------------------*/
+
 
 
         FairRunAna *run = new FairRunAna();
         std::vector<TString> files = {"data/output_digi"};
         Int_t nEvents = 1000;
-        read_file(files, nEvents);
-        std::vector<int> eventNumbers = {263};
+        Int_t first_Event = 0;
+        Int_t last_Event = nEvents;
+       // TMatrixD plane1 = ();
+        //read_file(files, nEvents);
+
+
+        for (auto iFile = 0; iFile < files.size(); ++iFile) {
+
+            TString mcFileNameHead = files[iFile];
+            TString mcFileNameTail = ".root";
+            TString mcFileName = mcFileNameHead + mcFileNameTail;
+            std::cout << " Analysis of simulation file  " << mcFileName << endl;
+
+            TFile *file = new TFile(mcFileName.Data(), "READ");
+            TTree *tree = (TTree *)file->Get("cbmsim");
+
+            tree = (TTree *)file->Get("cbmsim");
+            TTreeReader Reader1("cbmsim", file);
+            TTreeReaderValue<TClonesArray> eventArray(Reader1, "AtPatternEvent");
+
+            ROOT::Math::XYZPoint iniPos;
+            ROOT::Math::XYZPoint secPos;
+            //Loop over  the events in the simulation. 
+            for (Int_t i = first_Event; i < last_Event; i++) {
+                std::cout << " Event Number : " << i << " has " << "\n";
+                Reader1.Next();
+
+                AtPatternEvent *patternEvent = (AtPatternEvent *)eventArray->At(0);
+
+                if (patternEvent) {
+                    std::vector<AtTrack> &patternTrackCand = patternEvent->GetTrackCand();
+                    std::cout <<  patternTrackCand.size() << " Number of pattern tracks "<< "\n";
+
+                    for (auto track : patternTrackCand) {
+
+                        std::cout << " with === Track " << track.GetTrackID() << " also having: "<< track.GetHitClusterArray()->size() << " clusters "  << "\n";
+                        std::cout <<endl;
+
+                        if ( track.GetHitClusterArray()->size() < 5) {
+                           std::cout << " Track is noise or has less than 5 clusters! "  << "\n";
+                           std::cout<<endl;
+                           continue;
+                        }
+                        Double_t theta = track.GetGeoTheta();
+                        Double_t rad   = track.GetGeoRadius();
+                        Double_t B_f = 3.0;                         //in Tesla.
+                        Double_t brho = B_f * rad / TMath::Sin(theta) / 1000.0;     //in Tm.
+                        Double_t ener = 0;
+                        Double_t Am = 1.007; // atomic mass of proton in u. 
+                        Double_t Z = 1.0;
+                        Get_Energy(Am, Z, brho, ener);
+                        angle_vs_energy_pattern->Fill(theta * TMath::RadToDeg(), ener);
+                        Double_t p = brho * Z * 2.99792458;      //Magnitude of the momentum In MeV/c.
+                        //std::cout << endl;
+                        std:: cout << ener<<" ," << p << " ,"   <<  " , " << brho <<  endl;
+                        std::cout<<endl;
+                        //phi_pattern->Fill(phi * TMath::RadToDeg());
+
+
+                    }
+
+                }
+            }
+
+
+        }
+
+c2->cd(1);
+        angle_vs_energy_pattern->SetMarkerStyle(21);
+        angle_vs_energy_pattern->SetLineWidth(1);
+        angle_vs_energy_pattern->Draw();
 
 /*
 
@@ -832,26 +826,7 @@ cout<<"+----------------+"<<endl;
 
         }
 
-        
-        
 
-
-        c1->cd(1);
-        rx_vs_ry->Draw();
-        rx_vs_ry->SetMarkerStyle(21);
-        rx_vs_ry->SetMarkerSize(0.3);
-        c1->cd(2);
-        propagatorx_vs_propagatory->Draw();
-        propagatorx_vs_propagatory->SetMarkerStyle(21);
-        propagatorx_vs_propagatory->SetMarkerSize(0.3);
-        c1->cd(3);
-        R_projection->Draw();
-        R_projection->SetMarkerStyle(21);
-        R_projection->SetMarkerSize(0.3);
-        c1->cd(4);
-        F_projection->Draw();
-        F_projection->SetMarkerStyle(21);
-        F_projection->SetMarkerSize(0.3);
         c2->cd(1);
         kx_vs_ky->Draw();
         kx_vs_ky->SetMarkerStyle(21);
