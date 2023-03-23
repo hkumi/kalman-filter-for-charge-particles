@@ -630,9 +630,9 @@ c1->cd(1);
         c2->Divide(2, 2);
         c2->Draw();
         TH2F *angle_vs_energy = new TH2F("angle_vs_energy", "angle_vs_energy", 720, 0, 179, 1000, 0, 100.0);
-        TH2F *Z_vs_Y = new TH2F("Z_vs_Y", "energy_vs_clusterangle", 720, 0, -3, 1000, 0, 2.0);
+        TH2F *Z_vs_Y = new TH2F("Z_vs_Y", "Z_vs_Y", 720, 0, -3, 1000, 0, 2.0);
         TH2F *energy_vs_Zorb = new TH2F("energy_vs_Zorb", "energy_vs_Zorb", 720, 0, -5, 100, 0, 5.0);
-        TH1F* zorbHist = new TH1F("zorbHist", "Zorb Distribution", 100, 0, 1200);
+        TH1F *phi_pattern = new TH1F("phi_pattern", "phi_pattern", 1440, -359, 359);
         TH2F *angle_vs_energy_pattern =new TH2F("angle_vs_energy_pattern", "angle_vs_energy_pattern", 720, 0, 179, 1000, 0, 100.0);
 
 
@@ -679,23 +679,23 @@ cout<<"+----------------+"<<endl;
             ROOT::Math::XYZPoint secPos;
             //Loop over  the events in the simulation. 
             for (Int_t i = first_Event; i < last_Event; i++) {
-                std::cout << " Event Number : " << i << " has " << "\n";
+               // std::cout << " Event Number : " << i << " has " << "\n";
                 Reader1.Next();
 
                 AtPatternEvent *patternEvent = (AtPatternEvent *)eventArray->At(0);
 
                 if (patternEvent) {
                     std::vector<AtTrack> &patternTrackCand = patternEvent->GetTrackCand();
-                    std::cout <<  patternTrackCand.size() << " Number of pattern tracks "<< "\n";
+                 //   std::cout <<  patternTrackCand.size() << " Number of pattern tracks "<< "\n";
 
                     for (auto track : patternTrackCand) {
 
-                        std::cout << " with === Track " << track.GetTrackID() << " also having: "<< track.GetHitClusterArray()->size() << " clusters "  << "\n";
-                        std::cout <<endl;
+                   //     std::cout << " with === Track " << track.GetTrackID() << " also having: "<< track.GetHitClusterArray()->size() << " clusters "  << "\n";
+                     //   std::cout <<endl;
 
                         if ( track.GetHitClusterArray()->size() < 5) {
-                           std::cout << " Track is noise or has less than 5 clusters! "  << "\n";
-                           std::cout<<endl;
+                           //std::cout << " Track is noise or has less than 5 clusters! "  << "\n";
+                           //std::cout<<endl;
                            continue;
                         }
                         Double_t theta = track.GetGeoTheta();
@@ -707,12 +707,68 @@ cout<<"+----------------+"<<endl;
                         Double_t Z = 1.0;
                         Get_Energy(Am, Z, brho, ener);
                         angle_vs_energy_pattern->Fill(theta * TMath::RadToDeg(), ener);
-                        Double_t p = brho * Z * 2.99792458;      //Magnitude of the momentum In MeV/c.
-                        //std::cout << endl;
-                        std:: cout << ener<<" ," << p << " ,"   <<  " , " << brho <<  endl;
-                        std::cout<<endl;
-                        //phi_pattern->Fill(phi * TMath::RadToDeg());
+                        Double_t p = brho * Z * 2.99792458*100.0;      //Magnitude of the momentum In MeV/c.
+                       // std::cout << "This particle has:";
+                       // std:: cout << "Ener:"<<ener<<" Momentum:" << p << " and"   <<  " Magnetic Rigidity: " << brho <<  endl;
+                       // std::cout<<endl;
+                        auto hitClusterArray = track.GetHitClusterArray();
+                        AtHitCluster iniCluster;
+                        AtHitCluster SecCluster;
+                        std::vector<int> eventNumbers = {395};
+                        // Iterate over event numbers and access the corresponding events
+                        if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
+                           std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
+                           for(auto iclus = 1; iclus < hitClusterArray->size(); ++iclus){
+                              auto Cluster1 = hitClusterArray->at(iclus);
+                              auto inipos = Cluster1.GetPosition();
+                              Double_t x1 = inipos.X();
+                              Double_t y1 = inipos.Y(); 
+                              Double_t z1 = inipos.Z();
+                              Double_t distance = TMath::Sqrt(x1 * x1 + y1 * y1); 
+                              Z_vs_Y->Fill(x1,y1);
+ 
+                              // Select another cluster to compare with Cluster1
 
+                             auto Cluster2 = hitClusterArray->at(iclus-1);
+                             auto inipos2 = Cluster2.GetPosition();
+                             Double_t x2 = inipos2.X();
+                             Double_t y2 = inipos2.Y(); 
+                             Double_t z2 = inipos2.Z(); 
+
+                             // Calculate phi angle between the two points
+                             Double_t phi = TMath::ATan2(y2-y1, x2-x1);
+                             std::cout<<"this has :" << phi << endl;
+                             
+                             auto px = p * cos(phi) * sin(theta);
+                             auto py = p * sin(phi) * sin(theta);
+                             auto pz = p * cos(theta);
+                             std::cout << px << " ," << py << " ," << pz << std::endl;
+                             // Plane equation: ax + by + cz + d = 0
+                             double a = px;
+                             double b = py;
+                             double c = pz;
+                             //double d = -a * inipos.X() - b * inipos.Y() - pz * inipos.Z();
+                             double d = -a * inipos.X() - b * inipos.Y() -c*inipos.Z();
+
+                          //std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
+                         // Check plane equation
+                             Double_t x1 = inipos.X();
+                             Double_t y1 = inipos.Y();
+                             Double_t z1 = inipos.Z();
+                             Double_t result1 = a*x1 + b*y1 + c*z1 + d;
+                             //std::cout<<"with posx,y,z" << x1 << " ," << y1 << " ," << z1 << endl;
+                             //std::cout<<"the results are" << endl;
+                             //std::cout << "Result1: " << result1 << std::endl;
+                             std::cout<<endl;
+  
+                              // Fill histograms with distance and phi values
+
+                             phi_pattern->Fill(phi * TMath::RadToDeg());
+
+
+                           }
+
+                        }
 
                     }
 
@@ -723,9 +779,18 @@ cout<<"+----------------+"<<endl;
         }
 
 c2->cd(1);
-        angle_vs_energy_pattern->SetMarkerStyle(21);
+        angle_vs_energy_pattern->SetMarkerStyle(20);
         angle_vs_energy_pattern->SetLineWidth(1);
         angle_vs_energy_pattern->Draw();
+c2->cd(2);
+        Z_vs_Y->SetMarkerStyle(20);
+        Z_vs_Y->SetLineWidth(1);
+        Z_vs_Y->Draw();
+c2->cd(2);
+        phi_pattern->SetMarkerStyle(20);
+        phi_pattern->SetLineWidth(1);
+        phi_pattern->Draw();
+
 
 /*
 
