@@ -604,7 +604,7 @@ cout<<"+----------------+"<<endl;
           // state_vector.Print();
         }
 
-/*
+
 c1->cd(1);
         rx_vs_ry->Draw();
         rx_vs_ry->SetMarkerStyle(21);
@@ -622,7 +622,7 @@ c1->cd(1);
         F_projection->SetMarkerStyle(21);
         F_projection->SetMarkerSize(0.3);
 
-*/
+
 
 // Needs rethink!!!!
 
@@ -723,6 +723,7 @@ cout<<"+----------------+"<<endl;
                         TMatrixD K(6,3);
                         TMatrixD Y_1(3,1); //Observation matrix
                         TMatrixD C_1(3,3);
+                        TMatrixD Z_1(3,1);
 
 
                         TMatrixD Q(6,6);
@@ -741,6 +742,12 @@ cout<<"+----------------+"<<endl;
                         // Error in Measurement.
                         Double_t Matrix_R[9] = {1e-4,0,0,0,1e-4,0,0,0,1e-4};
                         R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
+
+                        Double_t Matrix_C[9] =  {1,0,0,0,1,0,0,0,1};
+                        C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
+
+
+                        Double_t xaxis[hitClusterArray->size()],yaxis[hitClusterArray->size()],zaxis[hitClusterArray->size()];
 
                         std::vector<int> eventNumbers = {395};
                         // Iterate over event numbers and access the corresponding events
@@ -803,15 +810,25 @@ cout<<"+----------------+"<<endl;
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
                              // Calculate the intersection of the predicted track with the plane
     			     double t = -(a*x_pred(0,0) + b*x_pred(1,0) + c*x_pred(2,0) + d)/ (a*x_pred(3,0) + b*x_pred(4,0) + c*x_pred(5,0));
-                             double x = x_pred(0,0) + t*x_pred(3,0);
-                             double y = x_pred(1,0) + t*x_pred(4,0);
-                             double z = x_pred(2,0) + t*x_pred(5,0);
-                             std::cout << "x:" <<x <<"y:" << y << "z:"  << z<< endl;
-                            //Y_1(0,iclus) = x;
-                            //Y_1(1,iclus) = y;
-                            //Y_1(2,iclus) = z;
+                             xaxis[iclus] = x_pred(0,0) + t*x_pred(3,0);
+                             yaxis[iclus] = x_pred(1,0) + t*x_pred(4,0);
+                             zaxis[iclus] = x_pred(2,0) + t*x_pred(5,0);
+                             //std::cout << "x:" <<xaxis[iclus] <<"y:" << yaxis[iclus] << "z:"  << zaxis[iclus]<< endl;
+                             Double_t Matrix_Y[3] = {xaxis[iclus],yaxis[iclus],zaxis[iclus]};
+                             Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
+
+                             Z_1 = C_1* Y_1;
+                             X_1 = x_pred + (K *(Z_1-(H_1*x_pred)));
+                             P =(I-K*H_1)*P_pred;
+
+                             std::cout << "the predicted state:" <<std::endl;
+                             x_pred.Print(); 
+                             std::cout << "the predicted covariance:" <<std::endl; 
+                             P_pred.Print();
+                             kx_vs_ky->Fill(x_pred(0,0), x_pred(1,0)); 
+
  
-                           // Y_1.Print();
+                            //Y_1.Print();
                            }
 
                         }
@@ -832,10 +849,16 @@ c2->cd(2);
         Z_vs_Y->SetMarkerStyle(20);
         Z_vs_Y->SetLineWidth(1);
         Z_vs_Y->Draw();
-c2->cd(2);
+c2->cd(3);
         phi_pattern->SetMarkerStyle(20);
         phi_pattern->SetLineWidth(1);
         phi_pattern->Draw();
+
+c2->cd(4);
+        kx_vs_ky->Draw();
+        kx_vs_ky->SetMarkerStyle(21);
+        kx_vs_ky->SetLineWidth(1);
+        kx_vs_ky->Draw();
 
 
 /*
