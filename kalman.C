@@ -698,6 +698,7 @@ cout<<"+----------------+"<<endl;
                            //std::cout<<endl;
                            continue;
                         }
+                        
                         Double_t theta = track.GetGeoTheta();
                         Double_t rad   = track.GetGeoRadius();
                         Double_t B_f = 3.0;                         //in Tesla.
@@ -714,22 +715,54 @@ cout<<"+----------------+"<<endl;
                         auto hitClusterArray = track.GetHitClusterArray();
                         AtHitCluster iniCluster;
                         AtHitCluster SecCluster;
+
+                        TMatrixD x_pred(6,1);
+                        TMatrixD P_pred(6,6);
+                        TMatrixD H_1(3,6);
+                        TMatrixD R_1(3,3);
+                        TMatrixD K(6,3);
+                        TMatrixD Y_1(3,1); //Observation matrix
+                        TMatrixD C_1(3,3);
+
+
+                        TMatrixD Q(6,6);
+                        Process_noise(Q);
+
+                        TMatrixD P(6,6);
+                        Ini_P(P);
+
+                        TMatrixD X_1(6,1);
+        		Double_t Matrix_X[6] = {x[0],y[0],z[0],vx[0],vy[0],vz[0]};
+        		X_1.Use(6, 1, Matrix_X);
+
+                        Double_t Matrix_H[18] =  {1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0};
+                        H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
+
+                        // Error in Measurement.
+                        Double_t Matrix_R[9] = {1e-4,0,0,0,1e-4,0,0,0,1e-4};
+                        R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
+
                         std::vector<int> eventNumbers = {395};
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
+
                            std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
-                           for(auto iclus = 1; iclus < hitClusterArray->size(); ++iclus){
-                              auto Cluster1 = hitClusterArray->at(iclus);
+
+                           for(auto iclus = 0; iclus < hitClusterArray->size()-1; ++iclus){
+                              std::cout << "Loop iteration: " << iclus << std::endl;
+                              std::cout << "Vector size: " << hitClusterArray->size() << std::endl;
+                              auto Cluster1 = hitClusterArray->at(iclus+1);
                               auto inipos = Cluster1.GetPosition();
                               Double_t x1 = inipos.X();
                               Double_t y1 = inipos.Y(); 
                               Double_t z1 = inipos.Z();
+                              std::cout << x1<<","<<y1<< ","<< z1<<endl;
                               Double_t distance = TMath::Sqrt(x1 * x1 + y1 * y1); 
                               Z_vs_Y->Fill(x1,y1);
  
                               // Select another cluster to compare with Cluster1
 
-                             auto Cluster2 = hitClusterArray->at(iclus-1);
+                             auto Cluster2 = hitClusterArray->at(iclus);
                              auto inipos2 = Cluster2.GetPosition();
                              Double_t x2 = inipos2.X();
                              Double_t y2 = inipos2.Y(); 
@@ -737,12 +770,12 @@ cout<<"+----------------+"<<endl;
 
                              // Calculate phi angle between the two points
                              Double_t phi = TMath::ATan2(y2-y1, x2-x1);
-                             std::cout<<"this has :" << phi << endl;
-                             
+                             //std::cout<<"this has :" << phi << endl;
+
                              auto px = p * cos(phi) * sin(theta);
                              auto py = p * sin(phi) * sin(theta);
                              auto pz = p * cos(theta);
-                             std::cout << px << " ," << py << " ," << pz << std::endl;
+                             //std::cout << px << " ," << py << " ," << pz << std::endl;
                              // Plane equation: ax + by + cz + d = 0
                              double a = px;
                              double b = py;
@@ -752,20 +785,33 @@ cout<<"+----------------+"<<endl;
 
                           //std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
                          // Check plane equation
-                             Double_t x1 = inipos.X();
-                             Double_t y1 = inipos.Y();
-                             Double_t z1 = inipos.Z();
                              Double_t result1 = a*x1 + b*y1 + c*z1 + d;
                              //std::cout<<"with posx,y,z" << x1 << " ," << y1 << " ," << z1 << endl;
                              //std::cout<<"the results are" << endl;
                              //std::cout << "Result1: " << result1 << std::endl;
                              std::cout<<endl;
-  
+ 
                               // Fill histograms with distance and phi values
 
                              phi_pattern->Fill(phi * TMath::RadToDeg());
 
-
+                            //Perform Kalman here.
+                            //Initial state predictions for protons.
+                             x_pred = (F * X_1) ;
+                             P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
+                             //updates
+                             K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
+                             // Calculate the intersection of the predicted track with the plane
+    			     double t = -(a*x_pred(0,0) + b*x_pred(1,0) + c*x_pred(2,0) + d)/ (a*x_pred(3,0) + b*x_pred(4,0) + c*x_pred(5,0));
+                             double x = x_pred(0,0) + t*x_pred(3,0);
+                             double y = x_pred(1,0) + t*x_pred(4,0);
+                             double z = x_pred(2,0) + t*x_pred(5,0);
+                             std::cout << "x:" <<x <<"y:" << y << "z:"  << z<< endl;
+                            //Y_1(0,iclus) = x;
+                            //Y_1(1,iclus) = y;
+                            //Y_1(2,iclus) = z;
+ 
+                           // Y_1.Print();
                            }
 
                         }
