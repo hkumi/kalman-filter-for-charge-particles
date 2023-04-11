@@ -50,11 +50,6 @@ std::vector<AtHit> *GetHitArray() {
 
  }
 
-void AtHitCluster::AddHit(const AtHit &hit)
-{
-   LOG(debug) << "Adding hit " << hit.GetPosition() << " " << hit.GetCharge();
-
-}
 
 
 
@@ -407,6 +402,27 @@ void I_matrix(TMatrixD &I){
 
 }
 
+//Define the initial predicted state for the kalman state vectors. 
+
+void statepred(TMatrixD &Initial_state){
+
+
+// Define the size of the matrix
+        Int_t rows = 6; // the number of rows. 
+        Int_t cols = 1; // the number of cols.
+
+ // Define the initial conditions
+         Initial_state(0,0) = 0.0;      // initial x position   unit in m.
+         Initial_state(1,0) = 0.0;      // initial y position  unit in m
+         Initial_state(2,0) = 0.0;      // initial z position  unit in m
+         Initial_state(3,0) = 10e6;     // initial x velocity unit in m/s
+         Initial_state(4,0) = 10e6;     // initial y velocity unit in m/s
+         Initial_state(5,0) = 10e6;     // initial z velocity unit in m/s.
+
+}
+
+
+
 
 
 void kalman(){
@@ -751,8 +767,7 @@ cout<<"+----------------+"<<endl;
                         Ini_P(P);
 
                         TMatrixD X_1(6,1);
-        		Double_t Matrix_X[6] = {x[0],y[0],z[0],vx[0],vy[0],vz[0]};
-        		X_1.Use(6, 1, Matrix_X);
+        		statepred(X_1);
 
                         Double_t Matrix_H[18] =  {1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0};
                         H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
@@ -820,7 +835,7 @@ cout<<"+----------------+"<<endl;
                               //std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
                          // Check plane equation
 
-
+/*
                              // Generate a random index within the range of the hits vector
                              auto hits = Cluster1.GetHitArray();
                              auto randIndex = gRandom->Integer(hits.size());
@@ -845,6 +860,7 @@ cout<<"+----------------+"<<endl;
                              }else{
                               std::cout << "Point does not lie on the plane" << ", " << result1 << endl << endl;
                              }
+*/
 /*
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
                              if (fabs(result1) < 1e-6) {
@@ -869,7 +885,7 @@ cout<<"+----------------+"<<endl;
                             std::cout << "t value: " << t<<endl;
                            // std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
                             //std::cout <<endl;
-
+*/
 
 
 
@@ -877,6 +893,11 @@ cout<<"+----------------+"<<endl;
                             //Perform Kalman here.
                             //Initial state predictions for protons.
                              x_pred = (F * X_1) ;
+                             X_1.Print();
+                             kx_vs_ky->Fill(x_pred(0,0), x_pred(1,0));
+
+
+/*
                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
                              //updates
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
@@ -925,13 +946,13 @@ c2->cd(3);
         phi_pattern->SetMarkerStyle(20);
         phi_pattern->SetLineWidth(1);
         phi_pattern->Draw();
-
+*/
 c2->cd(4);
         kx_vs_ky->SetMarkerStyle(21);
         kx_vs_ky->SetLineWidth(1);
         kx_vs_ky->Draw();
 
-*/
+
 /*
 
 // We basically just transfer the cordinates into array..
