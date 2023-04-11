@@ -453,6 +453,20 @@ Double_t  GetVirtualPlane( Double_t px, Double_t py, Double_t pz, Double_t x, Do
 }
 
 
+void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t x2, Double_t y2, Double_t z2, Double_t px, Double_t py, Double_t pz, Double_t& xi, Double_t& yi, Double_t& zi) {
+     Double_t d = GetVirtualPlane(px,py,pz,x1,y1,z1);
+     Double_t dx = x2 - x1;
+     Double_t dy = y2 - y1;
+     Double_t dz = z2 - z1;
+     Double_t t = -(px*x1 + py*y1 + pz*z1 + d) / (px*dx + py*dy + pz*dz);                       // calculate the intersection
+     xi = x1 + t * (x2 - x1);
+     yi = y1 + t * (y2 - y1);
+     zi = z1 + t * (z2 - z1);
+    std::cout << "(x2-x1)" << dx << "(y2-y1)" << dy << "(z2-z1)" << dz << endl;
+    std::cout << "t value: " << t << endl;
+    // std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
+    // std::cout <<endl;
+}
 
 
 
@@ -851,62 +865,13 @@ cout<<"+----------------+"<<endl;
                              //std::cout << px << " ," << py << " ," << pz << std::endl;
                              // Plane equation: ax + by + cz + d = 0
                              Double_t plane = GetVirtualPlane(px,py,pz,x1,y1,z1);
+                             Double_t a,b,c;
+                             GetPOCA(x1,y1,z1,x2,y2,z2,px,py,pz,a,b,c);
 
-                             std::cout << "Plane equation: " << px << "x + " << py << "y + " << pz << "z + " << plane << " = 0" << std::endl;
+                            // std::cout << "Plane equation: " << px << "x + " << py << "y + " << pz << "z + " << plane << " = 0" << std::endl;
                          // Check plane equation
 
 /*
-                             // Generate a random index within the range of the hits vector
-                             auto hits = Cluster1.GetHitArray();
-                             auto randIndex = gRandom->Integer(hits.size());
-
-                             // Retrieve the position of the hit at the random index
-                             auto randHitPos = hits[randIndex].GetPosition();
-
-                             Double_t x = randHitPos.X();
-                             Double_t y = randHitPos.Y(); 
-                             Double_t z = randHitPos.Z();
-                             //std::cout << "Random Hit Position: " << x << ", " << y << ", " << z << std::endl;
-
-                              Double_t result1 = a*x + b*y + c*z + d;
-                             //std::cout<<"with posx,y,z" << x1 << " ," << y1 << " ," << z1 << endl;
-                             //std::cout<<"the results are" << endl;
-                             //std::cout << "Result1: " << result1 << std::endl;
-                             std::cout<<endl;
-
- 
-                             if(result1 < 0.001) {
-                               std::cout<< "This point lines on the plane"  <<  ", " << result1 << endl <<endl; 
-                             }else{
-                              std::cout << "Point does not lie on the plane" << ", " << result1 << endl << endl;
-                             }
-*/
-/*
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-                             if (fabs(result1) < 1e-6) {
-                                // The vectors are parallel, handle this case as desired
-                                std::cout << "The line is parallel to the plane" << std::endl;
-                             } else {
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-                             //To calculate the intersection point of the two points to the plane.
-                             Double_t  dx = x2-x1;
-                             Double_t  dy = y2 -y1;
-                             Double_t  dz = z2-z1;
-                             Double_t  t = -(a * x1 + b * y1 + c * z1 + d)/ (a *dx + b * dy + c * dz);
-                             // Calculate intersection point
-                             Double_t xi = x1 + t * (x2 - x1);
-                             Double_t yi = y1 + t * (y2 - y1);
-                             Double_t zi = z1 + t * (z2 - z1);
-
-                            // Print intersection point
-                            std::cout<< "(x2-x1)" << (x2-x1) << "(y2-y1)" << y2-y1 <<"(z2-z1)" << z2-z1 << endl;
-                            std::cout << "t value: " << t<<endl;
-                           // std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
-                            //std::cout <<endl;
-
-
 
 
 
