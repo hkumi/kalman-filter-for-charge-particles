@@ -421,6 +421,38 @@ void statepred(TMatrixD &Initial_state){
 
 }
 
+Double_t GetPhi(Double_t x1, Double_t y1, Double_t x2, Double_t y2) {
+         Double_t phi = TMath::ATan2(y2 - y1, -(x2 - x1));
+         Double_t phiDeg;
+         if (phi < 0){
+            phiDeg = 360+ phi*TMath::RadToDeg();
+            }  else {
+                    phiDeg = phi*TMath::RadToDeg();
+                    }
+         return phiDeg;
+}
+
+
+
+// Function to calculate the virtual plane parameters
+// Plane equation: ax + by + cz + d = 0
+// Inputs:
+//    hitPos: Hit position
+//    px, py, pz: Track parameters(direction of the track)
+// Output:
+//     d: Virtual plane parameters
+Double_t  GetVirtualPlane( Double_t px, Double_t py, Double_t pz, Double_t x, Double_t y, Double_t z) {
+
+
+          Double_t a = px;
+          Double_t b = py;
+          Double_t c = pz;
+          Double_t d = -a * x - b * y - c * z;
+          return d;
+
+}
+
+
 
 
 
@@ -796,7 +828,7 @@ cout<<"+----------------+"<<endl;
                               Double_t x1 = inipos.X();
                               Double_t y1 = inipos.Y();
                               Double_t z1 = inipos.Z();
-                              std::cout << x1<<","<<y1<< ","<< z1<<endl;
+                            //  std::cout << x1<<","<<y1<< ","<< z1<<endl;
                               Double_t distance = TMath::Sqrt(x1 * x1 + y1 * y1);
                               Z_vs_Y->Fill(x1,y1);
 
@@ -809,30 +841,18 @@ cout<<"+----------------+"<<endl;
                              Double_t z2 = inipos2.Z();
 
                              // Calculate phi angle between the two points
-                             Double_t phi = TMath::ATan2(y2-y1, -x2+x1);
-                             //std::cout<<"this has :" << phi << endl;
-                             Double_t phiDeg;
-                             if (phi < 0){
-                                 phiDeg = 360+ phi*TMath::RadToDeg();
-                             }  else {
-                                phiDeg = phi*TMath::RadToDeg();
-                             }
+                             Double_t phiDeg = GetPhi(x1,y1,x2,y2);
 
                              phi_pattern->Fill(phiDeg);
-
 
                              auto px = p * cos(phiDeg) * sin(theta);
                              auto py = p * sin(phiDeg) * sin(theta);
                              auto pz = p * cos(theta);
                              //std::cout << px << " ," << py << " ," << pz << std::endl;
                              // Plane equation: ax + by + cz + d = 0
-                             double a = px;
-                             double b = py;
-                             double c = pz;
+                             Double_t plane = GetVirtualPlane(px,py,pz,x1,y1,z1);
 
-                             double d = -a * inipos.X() - b * inipos.Y() -c*inipos.Z();
-
-                              //std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
+                             std::cout << "Plane equation: " << px << "x + " << py << "y + " << pz << "z + " << plane << " = 0" << std::endl;
                          // Check plane equation
 
 /*
@@ -885,7 +905,7 @@ cout<<"+----------------+"<<endl;
                             std::cout << "t value: " << t<<endl;
                            // std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
                             //std::cout <<endl;
-*/
+
 
 
 
@@ -897,7 +917,7 @@ cout<<"+----------------+"<<endl;
                              kx_vs_ky->Fill(x_pred(0,0), x_pred(1,0));
 
 
-/*
+
                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
                              //updates
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
@@ -942,16 +962,17 @@ c2->cd(2);
         Z_vs_Y->SetMarkerStyle(20);
         Z_vs_Y->SetLineWidth(1);
         Z_vs_Y->Draw();
+*/
 c2->cd(3);
         phi_pattern->SetMarkerStyle(20);
         phi_pattern->SetLineWidth(1);
         phi_pattern->Draw();
-*/
+/*
 c2->cd(4);
         kx_vs_ky->SetMarkerStyle(21);
         kx_vs_ky->SetLineWidth(1);
         kx_vs_ky->Draw();
-
+*/
 
 /*
 
