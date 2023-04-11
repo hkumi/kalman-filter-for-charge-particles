@@ -20,7 +20,7 @@
 #include "TClonesArray.h"
 
 #include <algorithm>
-#include<limits>
+#include <limits>
 
 
 using namespace std;
@@ -39,6 +39,23 @@ std::vector<AtHitCluster> *GetHitClusterArray() {
 
 
  }
+
+
+std::vector<AtHit> fHitArray;
+std::vector<AtHit> *GetHitArray() {
+
+
+         return &fHitArray;
+
+
+ }
+
+void AtHitCluster::AddHit(const AtHit &hit)
+{
+   LOG(debug) << "Adding hit " << hit.GetPosition() << " " << hit.GetCharge();
+
+}
+
 
 
 void  Get_Energy(Double_t M,Double_t IZ,Double_t BRHO,Double_t &E){
@@ -145,7 +162,7 @@ Double_t  dxdt(double t,double vx, double vy, Double_t vz){
         Ex = 0;
 	Ey = 0;			// Electric field in the x and  direction in V/m.
 	Ez = -E;                        // Electric field in the z direction. 
-        
+
 
         rr = TMath::Sqrt(TMath::Power(vx,2)+TMath::Power(vy,2)+TMath::Power(vz,2));
         az = TMath::ATan2(vy,vx);
@@ -375,7 +392,7 @@ void I_matrix(TMatrixD &I){
         // Define the  matrixes to hold Identity matrix.
 
         I(0,0) = 1;
- 
+
         I(1,1) = 1;
 
         I(2,2) = 1;
@@ -578,7 +595,7 @@ cout<<"+----------------+"<<endl;
 	TMatrixD IplusFi (6,6);
         IplusFi.Zero();
         TMatrixD Fi(6,6);
-        
+
         for (int j = 0; j < 4; j++) {
              IplusFi = F* dt_1;
              Fi  = (1e-10)*Jacobi_matrix*IplusFi;
@@ -603,7 +620,7 @@ cout<<"+----------------+"<<endl;
             F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
           // state_vector.Print();
         }
-
+/*
 
 c1->cd(1);
         rx_vs_ry->Draw();
@@ -621,7 +638,7 @@ c1->cd(1);
         F_projection->Draw();
         F_projection->SetMarkerStyle(21);
         F_projection->SetMarkerSize(0.3);
-
+*/
 
 
 // Needs rethink!!!!
@@ -632,7 +649,7 @@ c1->cd(1);
         TH2F *angle_vs_energy = new TH2F("angle_vs_energy", "angle_vs_energy", 720, 0, 179, 1000, 0, 100.0);
         TH2F *Z_vs_Y = new TH2F("Z_vs_Y", "Z_vs_Y", 720, 0, -3, 1000, 0, 2.0);
         TH2F *energy_vs_Zorb = new TH2F("energy_vs_Zorb", "energy_vs_Zorb", 720, 0, -5, 100, 0, 5.0);
-        TH1F *phi_pattern = new TH1F("phi_pattern", "phi_pattern", 1440, -359, 359);
+        TH1F *phi_pattern = new TH1F("phi_pattern", "phi_pattern", 1440, -50, 400);
         TH2F *angle_vs_energy_pattern =new TH2F("angle_vs_energy_pattern", "angle_vs_energy_pattern", 720, 0, 179, 1000, 0, 100.0);
 
 
@@ -690,15 +707,15 @@ cout<<"+----------------+"<<endl;
 
                     for (auto track : patternTrackCand) {
 
-                   //     std::cout << " with === Track " << track.GetTrackID() << " also having: "<< track.GetHitClusterArray()->size() << " clusters "  << "\n";
-                     //   std::cout <<endl;
+                     //   std::cout << " with === Track " << track.GetTrackID() << " also having: "<< track.GetHitClusterArray()->size() << " clusters "  << "\n";
+                       // std::cout <<endl;
 
                         if ( track.GetHitClusterArray()->size() < 5) {
                            //std::cout << " Track is noise or has less than 5 clusters! "  << "\n";
                            //std::cout<<endl;
                            continue;
                         }
-                        
+
                         Double_t theta = track.GetGeoTheta();
                         Double_t rad   = track.GetGeoRadius();
                         Double_t B_f = 3.0;                         //in Tesla.
@@ -713,6 +730,7 @@ cout<<"+----------------+"<<endl;
                        // std:: cout << "Ener:"<<ener<<" Momentum:" << p << " and"   <<  " Magnetic Rigidity: " << brho <<  endl;
                        // std::cout<<endl;
                         auto hitClusterArray = track.GetHitClusterArray();
+
                         AtHitCluster iniCluster;
                         AtHitCluster SecCluster;
 
@@ -756,51 +774,105 @@ cout<<"+----------------+"<<endl;
                            std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
 
                            for(auto iclus = 0; iclus < hitClusterArray->size()-1; ++iclus){
-                              std::cout << "Loop iteration: " << iclus << std::endl;
-                              std::cout << "Vector size: " << hitClusterArray->size() << std::endl;
+                            //  std::cout << "Loop iteration: " << iclus << std::endl;
+                              //std::cout << "Vector size: " << hitClusterArray->size() << std::endl;
                               auto Cluster1 = hitClusterArray->at(iclus+1);
                               auto inipos = Cluster1.GetPosition();
                               Double_t x1 = inipos.X();
-                              Double_t y1 = inipos.Y(); 
+                              Double_t y1 = inipos.Y();
                               Double_t z1 = inipos.Z();
                               std::cout << x1<<","<<y1<< ","<< z1<<endl;
-                              Double_t distance = TMath::Sqrt(x1 * x1 + y1 * y1); 
+                              Double_t distance = TMath::Sqrt(x1 * x1 + y1 * y1);
                               Z_vs_Y->Fill(x1,y1);
- 
+
                               // Select another cluster to compare with Cluster1
 
                              auto Cluster2 = hitClusterArray->at(iclus);
                              auto inipos2 = Cluster2.GetPosition();
                              Double_t x2 = inipos2.X();
-                             Double_t y2 = inipos2.Y(); 
-                             Double_t z2 = inipos2.Z(); 
+                             Double_t y2 = inipos2.Y();
+                             Double_t z2 = inipos2.Z();
 
                              // Calculate phi angle between the two points
-                             Double_t phi = TMath::ATan2(y2-y1, x2-x1);
+                             Double_t phi = TMath::ATan2(y2-y1, -x2+x1);
                              //std::cout<<"this has :" << phi << endl;
+                             Double_t phiDeg;
+                             if (phi < 0){
+                                 phiDeg = 360+ phi*TMath::RadToDeg();
+                             }  else {
+                                phiDeg = phi*TMath::RadToDeg();
+                             }
 
-                             auto px = p * cos(phi) * sin(theta);
-                             auto py = p * sin(phi) * sin(theta);
+                             phi_pattern->Fill(phiDeg);
+
+
+                             auto px = p * cos(phiDeg) * sin(theta);
+                             auto py = p * sin(phiDeg) * sin(theta);
                              auto pz = p * cos(theta);
                              //std::cout << px << " ," << py << " ," << pz << std::endl;
                              // Plane equation: ax + by + cz + d = 0
                              double a = px;
                              double b = py;
                              double c = pz;
-                             //double d = -a * inipos.X() - b * inipos.Y() - pz * inipos.Z();
+
                              double d = -a * inipos.X() - b * inipos.Y() -c*inipos.Z();
 
-                          //std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
+                              //std::cout << "Plane equation: " << a << "x + " << b << "y + " << c << "z + " << d << " = 0" << std::endl;
                          // Check plane equation
-                             Double_t result1 = a*x1 + b*y1 + c*z1 + d;
+
+
+                             // Generate a random index within the range of the hits vector
+                             auto hits = Cluster1.GetHitArray();
+                             auto randIndex = gRandom->Integer(hits.size());
+
+                             // Retrieve the position of the hit at the random index
+                             auto randHitPos = hits[randIndex].GetPosition();
+
+                             Double_t x = randHitPos.X();
+                             Double_t y = randHitPos.Y(); 
+                             Double_t z = randHitPos.Z();
+                             //std::cout << "Random Hit Position: " << x << ", " << y << ", " << z << std::endl;
+
+                              Double_t result1 = a*x + b*y + c*z + d;
                              //std::cout<<"with posx,y,z" << x1 << " ," << y1 << " ," << z1 << endl;
                              //std::cout<<"the results are" << endl;
                              //std::cout << "Result1: " << result1 << std::endl;
                              std::cout<<endl;
- 
-                              // Fill histograms with distance and phi values
 
-                             phi_pattern->Fill(phi * TMath::RadToDeg());
+ 
+                             if(result1 < 0.001) {
+                               std::cout<< "This point lines on the plane"  <<  ", " << result1 << endl <<endl; 
+                             }else{
+                              std::cout << "Point does not lie on the plane" << ", " << result1 << endl << endl;
+                             }
+/*
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+                             if (fabs(result1) < 1e-6) {
+                                // The vectors are parallel, handle this case as desired
+                                std::cout << "The line is parallel to the plane" << std::endl;
+                             } else {
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+                             //To calculate the intersection point of the two points to the plane.
+                             Double_t  dx = x2-x1;
+                             Double_t  dy = y2 -y1;
+                             Double_t  dz = z2-z1;
+                             Double_t  t = -(a * x1 + b * y1 + c * z1 + d)/ (a *dx + b * dy + c * dz);
+                             // Calculate intersection point
+                             Double_t xi = x1 + t * (x2 - x1);
+                             Double_t yi = y1 + t * (y2 - y1);
+                             Double_t zi = z1 + t * (z2 - z1);
+
+                            // Print intersection point
+                            std::cout<< "(x2-x1)" << (x2-x1) << "(y2-y1)" << y2-y1 <<"(z2-z1)" << z2-z1 << endl;
+                            std::cout << "t value: " << t<<endl;
+                           // std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
+                            //std::cout <<endl;
+
+
+
+
 
                             //Perform Kalman here.
                             //Initial state predictions for protons.
@@ -808,11 +880,10 @@ cout<<"+----------------+"<<endl;
                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
                              //updates
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
-                             // Calculate the intersection of the predicted track with the plane
-    			     double t = -(a*x_pred(0,0) + b*x_pred(1,0) + c*x_pred(2,0) + d)/ (a*x_pred(3,0) + b*x_pred(4,0) + c*x_pred(5,0));
-                             xaxis[iclus] = x_pred(0,0) + t*x_pred(3,0);
-                             yaxis[iclus] = x_pred(1,0) + t*x_pred(4,0);
-                             zaxis[iclus] = x_pred(2,0) + t*x_pred(5,0);
+
+                             xaxis[iclus] = xi;
+                             yaxis[iclus] = yi;
+                             zaxis[iclus] = zi;
                              //std::cout << "x:" <<xaxis[iclus] <<"y:" << yaxis[iclus] << "z:"  << zaxis[iclus]<< endl;
                              Double_t Matrix_Y[3] = {xaxis[iclus],yaxis[iclus],zaxis[iclus]};
                              Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
@@ -821,13 +892,14 @@ cout<<"+----------------+"<<endl;
                              X_1 = x_pred + (K *(Z_1-(H_1*x_pred)));
                              P =(I-K*H_1)*P_pred;
 
-                             std::cout << "the predicted state:" <<std::endl;
-                             x_pred.Print(); 
-                             std::cout << "the predicted covariance:" <<std::endl; 
-                             P_pred.Print();
+                         //    std::cout << "the predicted state:" <<std::endl;
+                            // x_pred.Print(); 
+                           //  std::cout << "the predicted covariance:" <<std::endl; 
+                           //  P_pred.Print();
                              kx_vs_ky->Fill(x_pred(0,0), x_pred(1,0)); 
 
- 
+
+ */
                             //Y_1.Print();
                            }
 
@@ -840,7 +912,7 @@ cout<<"+----------------+"<<endl;
 
 
         }
-
+/*
 c2->cd(1);
         angle_vs_energy_pattern->SetMarkerStyle(20);
         angle_vs_energy_pattern->SetLineWidth(1);
@@ -855,12 +927,11 @@ c2->cd(3);
         phi_pattern->Draw();
 
 c2->cd(4);
-        kx_vs_ky->Draw();
         kx_vs_ky->SetMarkerStyle(21);
         kx_vs_ky->SetLineWidth(1);
         kx_vs_ky->Draw();
 
-
+*/
 /*
 
 // We basically just transfer the cordinates into array..
