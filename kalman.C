@@ -141,7 +141,7 @@ Double_t StoppingPower(Double_t Energy){
 // Function that calculates the derivative of the position and velocity of the particle
 
 Double_t  dxdt(double t,double vx, double vy, Double_t vz){
-        
+
         Double_t Energy = GetEnergy(vx, vy, vz);
         Double_t st = StoppingPower(Energy);
 	Double_t Ex,Ey,Ez,f1;            	//Electric field in V/m. 
@@ -180,20 +180,20 @@ Double_t Energy = GetEnergy(vx, vy, vz);
         Double_t Bx,By,Bz;              // magnetic field in Tesla
         Double_t q = 1.6022*TMath::Power(10,-19);   //charge of the particle in C
         Double_t B=3.0;                 // Applied magnetic field.
-        Double_t rr,az,po;   
+        Double_t rr,az,po;
         Double_t m = 1.6726*TMath::Power(10,-27);  // mass of the particle in kg
 	Double_t E = TMath::Cos((q*B)/m) * 500 ;
         Bx = 0;                      // magnetic field in x and y  direction in Tesla.
 	By = 0;
         Bz = B;          // magnetic field in the z direction in Tesla.
         Ex = 0;                      // Electric field in the x and  direction in V/m.
-	Ey = 0; 
+	Ey = 0;
         Ez = -E;                        // Electric field in the z direction.
 
 	rr = TMath::Sqrt(TMath::Power(vx,2)+TMath::Power(vy,2)+TMath::Power(vz,2));
         az = TMath::ATan(vy/vx);
         po = TMath::ACos(vz/rr);
- 
+
 
        f2 =  q/m * (Ey + vz*Bx - vx*Bz) - st*TMath::Sin(po)*TMath::Sin(az); 
 
@@ -206,12 +206,12 @@ Double_t Energy = GetEnergy(vx, vy, vz);
 
 double  dzdt(double t,double vx, double vy,Double_t vz){
 Double_t Energy = GetEnergy(vx, vy, vz);
-        Double_t st = StoppingPower(Energy);	
+        Double_t st = StoppingPower(Energy);
         Double_t Ex,Ey,Ez,f3;              //Electric field in V/m. 
         Double_t Bx,By,Bz;              // magnetic field in Tesla
         Double_t q = 1.6022*pow(10,-19);   //charge of the particle in eV
         Double_t B=3.0;                 // Applied magnetic field.
-        Double_t rr,az,po;  
+        Double_t rr,az,po;
         Double_t m = 1.6726*TMath::Power(10,-27);  // mass of the particle in kg
 	Double_t E = TMath::Cos((q*B)/m) * 500 ; 
         Bx = 0;                      // magnetic field in x and y  direction in Tesla.
@@ -225,7 +225,7 @@ Double_t Energy = GetEnergy(vx, vy, vz);
         az = TMath::ATan(vy/vx);
 	//std::cout<<az<<endl;
         po = TMath::ACos(vz/rr);
- 
+
 
         f3 =  q/m * (Ez + vx*By - vy*Bx) - st*TMath::Cos(po);
         double bro = Bz * rr / TMath::Sin(po)/ 1000.0;
@@ -247,7 +247,7 @@ Double_t fx(Double_t t, Double_t vx){
         }
 
 Double_t fy(Double_t t,Double_t vy){
- 
+
 
         Double_t f2y = vy;
         return f2y;
@@ -356,7 +356,7 @@ void Ini_P(TMatrixD &P){
         // Define the  matrixes to hold covariance matrix.
 
         P(0,0) = 1e-4;
- 
+
         P(1,1) = 1e-4;
 
         P(2,2) = 1e-4;
@@ -458,10 +458,11 @@ void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Do
      Double_t dx = px;
      Double_t dy = py;
      Double_t dz = pz;
-     Double_t t = -(px*x1 + py*y1 + pz*z1) + d / (px*dx + py*dy + pz*dz);                       // calculate the intersection
+     Double_t t = d - (px*x1 + py*y1 + pz*z1)  / (px*dx + py*dy + pz*dz);                       // calculate the intersection
      xi = x1 + t * dx;
      yi = y1 + t * dy;
      zi = z1 + t * dz;
+
      std::cout << "t value: " << t << endl;
      std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
      std::cout <<endl;
@@ -483,6 +484,8 @@ void kalman(){
 
         TH3F *R_projection = new TH3F("R_projection", "runge_projection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);	
         TH3F *F_projection = new TH3F("F_projection", "propagator_projection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);
+        TH3F *Intersection = new TH3F("Intersection", "Intersection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);
+
 
 
          TCanvas *c1 = new TCanvas();
@@ -864,11 +867,13 @@ cout<<"+----------------+"<<endl;
                              //std::cout << px << " ," << py << " ," << pz << std::endl;
                              // Plane equation: ax + by + cz + d = 0
                              Double_t plane = GetVirtualPlane(px,py,pz,x1,y1,z1);
-                             Double_t a,b,c = 0.0;
-                             GetPOCA(x1,y1,z1,px,py,pz,a,b,c);
+                             Double_t xi,yi,zi = 0.0;
+                             GetPOCA(x1,y1,z1,px,py,pz,xi,yi,zi); 
+                             Intersection->Fill(xi,yi,zi);
 
-                            // std::cout << "Plane equation: " << px << "x + " << py << "y + " << pz << "z + " << plane << " = 0" << std::endl;
-                         // Check plane equation
+
+
+
 
 /*
 
@@ -931,12 +936,12 @@ c2->cd(3);
         phi_pattern->SetMarkerStyle(20);
         phi_pattern->SetLineWidth(1);
         phi_pattern->Draw();
-/*
+
 c2->cd(4);
-        kx_vs_ky->SetMarkerStyle(21);
-        kx_vs_ky->SetLineWidth(1);
-        kx_vs_ky->Draw();
-*/
+        Intersection->SetMarkerStyle(21);
+        Intersection->SetLineWidth(1);
+        Intersection->Draw();
+
 
 /*
 
