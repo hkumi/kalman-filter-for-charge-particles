@@ -447,25 +447,24 @@ Double_t  GetVirtualPlane( Double_t px, Double_t py, Double_t pz, Double_t x, Do
           Double_t a = px;
           Double_t b = py;
           Double_t c = pz;
-          Double_t d = -a * x - b * y - c * z;
+          Double_t d = a * x + b * y + c * z;
           return d;
 
 }
 
 
-void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t x2, Double_t y2, Double_t z2, Double_t px, Double_t py, Double_t pz, Double_t& xi, Double_t& yi, Double_t& zi) {
+void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz, Double_t& xi, Double_t& yi, Double_t& zi) {
      Double_t d = GetVirtualPlane(px,py,pz,x1,y1,z1);
-     Double_t dx = x2 - x1;
-     Double_t dy = y2 - y1;
-     Double_t dz = z2 - z1;
-     Double_t t = -(px*x1 + py*y1 + pz*z1 + d) / (px*dx + py*dy + pz*dz);                       // calculate the intersection
-     xi = x1 + t * (x2 - x1);
-     yi = y1 + t * (y2 - y1);
-     zi = z1 + t * (z2 - z1);
-    std::cout << "(x2-x1)" << dx << "(y2-y1)" << dy << "(z2-z1)" << dz << endl;
-    std::cout << "t value: " << t << endl;
-    // std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
-    // std::cout <<endl;
+     Double_t dx = px;
+     Double_t dy = py;
+     Double_t dz = pz;
+     Double_t t = -(px*x1 + py*y1 + pz*z1) + d / (px*dx + py*dy + pz*dz);                       // calculate the intersection
+     xi = x1 + t * dx;
+     yi = y1 + t * dy;
+     zi = z1 + t * dz;
+     std::cout << "t value: " << t << endl;
+     std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
+     std::cout <<endl;
 }
 
 
@@ -865,8 +864,8 @@ cout<<"+----------------+"<<endl;
                              //std::cout << px << " ," << py << " ," << pz << std::endl;
                              // Plane equation: ax + by + cz + d = 0
                              Double_t plane = GetVirtualPlane(px,py,pz,x1,y1,z1);
-                             Double_t a,b,c;
-                             GetPOCA(x1,y1,z1,x2,y2,z2,px,py,pz,a,b,c);
+                             Double_t a,b,c = 0.0;
+                             GetPOCA(x1,y1,z1,px,py,pz,a,b,c);
 
                             // std::cout << "Plane equation: " << px << "x + " << py << "y + " << pz << "z + " << plane << " = 0" << std::endl;
                          // Check plane equation
