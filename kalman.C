@@ -338,6 +338,32 @@ void generateGaussianNoise(TMatrixD &Q, Double_t mean, Double_t stdDev)
 }
 
 
+
+void generateMeasurementNoise(TMatrixD& R, Double_t mean, Double_t stdDev)
+{
+    // Define the size of the matrix
+    Int_t rows = 3;
+    Int_t cols = 3;
+
+    // Define the matrix to hold measurement noise
+    R.ResizeTo(rows, cols);
+    R.Zero();
+
+    // Set up random number generator with Gaussian distribution
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<Double_t> dist(mean, stdDev);
+
+    // Fill matrix with random Gaussian noise
+    for (Int_t i = 0; i < rows; i++) {
+        for (Int_t j = 0; j < cols; j++) {
+            R(i, j) = dist(gen);
+        }
+    }
+}
+
+
+
 // Define a functions to calculate the Initial Covariance P .
 //this is a 6*6 matrice for my case. 
 void Ini_P(TMatrixD &P){
@@ -467,6 +493,44 @@ void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Do
      std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
      std::cout <<endl;
 }
+
+
+void GetMeasurementMatrix(TMatrixD& H_k, Double_t px, Double_t py, Double_t pz, Double_t x1, Double_t y1, Double_t z1) {
+    // Define the size of the matrix
+    Int_t rows = 3;
+    Int_t cols = 6;
+
+    // Define the matrix to hold the measurement matrix
+    H_k.ResizeTo(rows, cols);
+    H_k.Zero();
+
+    // Calculate the coefficients of the plane equation
+    Double_t a = px;
+    Double_t b = py;
+    Double_t c = pz;
+    Double_t d = a * x1 + b * y1 + c * z1;
+
+    // Set the values of the measurement matrix
+    H_k(0, 0) = a;
+    H_k(1, 1) = b;
+    H_k(2, 2) = c;
+    H_k(0, 3) = -xi;
+    H_k(1, 4) = -yi;
+    H_k(2, 5) = -zi;
+}
+
+void ProjectMeasurement(TMatrixD& h_k, TMatrixD& state_k, Double_t px, Double_t py, Double_t pz, Double_t x1, Double_t y1, Double_t z1) {
+    // Define the measurement matrix
+    TMatrixD H_k(3, 6);
+
+    // Get the measurement matrix
+    GetMeasurementMatrix(H_k, px, py, pz, x1, y1, z1);
+
+    // Project the measurement
+    h_k.ResizeTo(3, 1);
+    h_k = H_k * state_k;
+}
+
 
 
 
@@ -801,7 +865,6 @@ cout<<"+----------------+"<<endl;
                         TMatrixD x_pred(6,1);
                         TMatrixD P_pred(6,6);
                         TMatrixD H_1(3,6);
-                        TMatrixD R_1(3,3);
                         TMatrixD K(6,3);
                         TMatrixD Y_1(3,1); //Observation matrix
                         TMatrixD C_1(3,3);
@@ -822,8 +885,8 @@ cout<<"+----------------+"<<endl;
                         H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
 
                         // Error in Measurement.
-                        Double_t Matrix_R[9] = {1e-4,0,0,0,1e-4,0,0,0,1e-4};
-                        R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
+                        TMatrixD R_1(3,3);
+                        generateMeasurementNoise(R_1,0.0,1.0);
 
                         Double_t Matrix_C[9] =  {1,0,0,0,1,0,0,0,1};
                         C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
