@@ -314,30 +314,29 @@ void Jacobi_matrice(TMatrixD &Jacobi_matrix){
 
 // Define a functions to calculate the process noise matrix Q .
 //this is a 6*6 matrice for my case. 
-void Process_noise(TMatrixD &Q){
-        // Define the size of the matrix
-        Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
-        Int_t cols = 6; // the number of cols.
+void generateGaussianNoise(TMatrixD &Q, Double_t mean, Double_t stdDev)
+{
+    // Define the size of the matrix
+    Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
+    Int_t cols = 6; // the number of cols.
 
-        // Define the  matrixes to hold process noise. 
-        Q.ResizeTo(rows,cols);
-        Q.Zero();
+    // Define the matrix to hold process noise. 
+    Q.ResizeTo(rows, cols);
+    Q.Zero();
 
-        Q(0,0) = 1e-9;
+    // Set up random number generator with Gaussian distribution
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<Double_t> dist(mean, stdDev);
 
-        Q(1,1) = 1e-9;
-
-        Q(2,2) = 1e-9;
-
-        Q(3,3) = 1e-12;
-
-        Q(4,4) = 1e-12;
-
-        Q(5,5) = 1e-12;
-
-
-
+    // Fill matrix with random Gaussian noise
+    for (Int_t i = 0; i < rows; i++) {
+        for (Int_t j = 0; j < cols; j++) {
+            Q(i, j) = dist(gen);
+        }
+    }
 }
+
 
 // Define a functions to calculate the Initial Covariance P .
 //this is a 6*6 matrice for my case. 
@@ -410,14 +409,15 @@ void statepred(TMatrixD &Initial_state){
 // Define the size of the matrix
         Int_t rows = 6; // the number of rows. 
         Int_t cols = 1; // the number of cols.
+        Double_t Am = 1.007; // atomic mass of proton in u. 
 
  // Define the initial conditions
          Initial_state(0,0) = 0.0;      // initial x position   unit in m.
          Initial_state(1,0) = 0.0;      // initial y position  unit in m
          Initial_state(2,0) = 0.0;      // initial z position  unit in m
-         Initial_state(3,0) = 10e6;     // initial x velocity unit in m/s
-         Initial_state(4,0) = 10e6;     // initial y velocity unit in m/s
-         Initial_state(5,0) = 10e6;     // initial z velocity unit in m/s.
+         Initial_state(3,0) = 10e6 * Am;     // initial x momentum unit in u m/s
+         Initial_state(4,0) = 10e6 * Am;     // initial y momentum  unit in u m/s
+         Initial_state(5,0) = 10e6 * Am ;     // initial z momentum unit in u m/s.
 
 }
 
@@ -477,12 +477,12 @@ void kalman(){
          TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 1000, 0, 2.0);
 
          TH2F *vx_vs_vy = new TH2F("vx_vs_rvy", "rungevx_vs_rungevy", 720, 0, -3, 1000, 0, 2.0);
-//         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
+         TH2F *Intx_vs_Inty = new TH2F("Intx_vs_Inty", "Intersectionx_vs_Intersectiony", 720, 0, -3, 1000, 0, 2.0);
 
          TH2F *propagatorx_vs_propagatory = new TH2F("propagatorx_vs_propagatory", "propagatorx_vs_propagatory", 720, 0, -3, 1000, 0, 2.0);
   //       TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 100, 0, 2.0);
 
-        TH3F *R_projection = new TH3F("R_projection", "runge_projection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);	
+        TH3F *R_projection = new TH3F("R_projection", "runge_projection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);
         TH3F *F_projection = new TH3F("F_projection", "propagator_projection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);
         TH3F *Intersection = new TH3F("Intersection", "Intersection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);
 
@@ -809,7 +809,8 @@ cout<<"+----------------+"<<endl;
 
 
                         TMatrixD Q(6,6);
-                        Process_noise(Q);
+                        generateGaussianNoise(Q, 0.0, 1.0); // Generates a 6x6 matrix of Gaussian noise with mean 0 and standard deviation 1
+                         Q.Print();
 
                         TMatrixD P(6,6);
                         Ini_P(P);
@@ -865,28 +866,18 @@ cout<<"+----------------+"<<endl;
                              auto py = p * sin(phiDeg) * sin(theta);
                              auto pz = p * cos(theta);
                              //std::cout << px << " ," << py << " ," << pz << std::endl;
-                             // Plane equation: ax + by + cz + d = 0
+                             // Plane equation: ax + by + cz = d
                              Double_t plane = GetVirtualPlane(px,py,pz,x1,y1,z1);
                              Double_t xi,yi,zi = 0.0;
-                             GetPOCA(x1,y1,z1,px,py,pz,xi,yi,zi); 
-                             Intersection->Fill(xi,yi,zi);
-
-
-
-
-
-/*
+                             GetPOCA(x1,y1,z1,px,py,pz,xi,yi,zi);
+                             //std::cout << "xi:" << xi << "yi:" << yi <<  "zi:" << zi <<  endl; 
+                             //Intx_vs_Inty->Fill(xi,yi);
 
 
 
                             //Perform Kalman here.
                             //Initial state predictions for protons.
                              x_pred = (F * X_1) ;
-                             X_1.Print();
-                             kx_vs_ky->Fill(x_pred(0,0), x_pred(1,0));
-
-
-
                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
                              //updates
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
@@ -909,7 +900,6 @@ cout<<"+----------------+"<<endl;
                              kx_vs_ky->Fill(x_pred(0,0), x_pred(1,0)); 
 
 
- */
                             //Y_1.Print();
                            }
 
@@ -922,7 +912,7 @@ cout<<"+----------------+"<<endl;
 
 
         }
-/*
+
 c2->cd(1);
         angle_vs_energy_pattern->SetMarkerStyle(20);
         angle_vs_energy_pattern->SetLineWidth(1);
@@ -931,16 +921,16 @@ c2->cd(2);
         Z_vs_Y->SetMarkerStyle(20);
         Z_vs_Y->SetLineWidth(1);
         Z_vs_Y->Draw();
-*/
+
 c2->cd(3);
         phi_pattern->SetMarkerStyle(20);
         phi_pattern->SetLineWidth(1);
         phi_pattern->Draw();
 
 c2->cd(4);
-        Intersection->SetMarkerStyle(21);
-        Intersection->SetLineWidth(1);
-        Intersection->Draw();
+        kx_vs_ky->SetMarkerStyle(21);
+        kx_vs_ky->SetLineWidth(1);
+        kx_vs_ky->Draw();
 
 
 /*
