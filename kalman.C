@@ -464,23 +464,17 @@ Double_t  GetVirtualPlane( Double_t px, Double_t py, Double_t pz, Double_t x, Do
 }
 
 
-void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz, Double_t& xi, Double_t& yi, Double_t& zi) {
+void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz, Double_t& t) {
      Double_t d = GetVirtualPlane(px,py,pz,x1,y1,z1);
      Double_t dx = px;
      Double_t dy = py;
      Double_t dz = pz;
-     Double_t t = d - (px*x1 + py*y1 + pz*z1)  / (px*dx + py*dy + pz*dz);                       // calculate the intersection
-     xi = x1 + t * dx;
-     yi = y1 + t * dy;
-     zi = z1 + t * dz;
+     t = d - (px*x1 + py*y1 + pz*z1)  / (px*dx + py*dy + pz*dz);                       // calculate the intersection
 
-     std::cout << "t value: " << t << endl;
-     std::cout << "Intersection point: (" << xi << ", " << yi << ", " << zi << ")" << std::endl;
-     std::cout <<endl;
 }
 
 
-void GetMeasurementMatrix(TMatrixD& H_k, Double_t px, Double_t py, Double_t pz, Double_t x1, Double_t y1, Double_t z1) {
+void GetMeasurementMatrix(TMatrixD& H_k) {
     // Define the size of the matrix
     Int_t rows = 3;
     Int_t cols = 6;
@@ -488,13 +482,6 @@ void GetMeasurementMatrix(TMatrixD& H_k, Double_t px, Double_t py, Double_t pz, 
     // Define the matrix to hold the measurement matrix
     H_k.ResizeTo(rows, cols);
     H_k.Zero();
-
-    Double_t d = GetVirtualPlane(px,py,pz,x1,y1,z1);
-    Double_t dx = px;
-    Double_t dy = py;
-    Double_t dz = pz;
-    Double_t t = d - (px*x1 + py*y1 + pz*z1)  / (px*dx + py*dy + pz*dz);                       // calculate the intersection
-
 
     // Set the values of the measurement matrix
     H_k(0, 0) = 1;
@@ -508,7 +495,7 @@ void ProjectMeasurement(TMatrixD& h_k, TMatrixD state_k, Double_t px, Double_t p
     TMatrixD H_k(3, 6);
 
     // Get the measurement matrix
-    GetMeasurementMatrix(H_k, px, py, pz, x1, y1, z1);
+    GetMeasurementMatrix(H_k);
 
     // Project the measurement
     h_k.ResizeTo(3, 1);
@@ -864,6 +851,11 @@ cout<<"+----------------+"<<endl;
                         TMatrixD X_1(6,1);
         		statepred(X_1);
 
+                        TMatrixD H_1(3,6);
+                        // Get the measurement matrix
+                        GetMeasurementMatrix(H_1);
+
+
                         // Error in Measurement.
                         TMatrixD R_1(3,3);
                         generateMeasurementNoise(R_1,0.0,1.0);
@@ -911,8 +903,8 @@ cout<<"+----------------+"<<endl;
                              //std::cout << px << " ," << py << " ," << pz << std::endl;
                              // Plane equation: ax + by + cz = d
                              Double_t plane = GetVirtualPlane(px,py,pz,x1,y1,z1);
-                             Double_t xi,yi,zi = 0.0;
-                             GetPOCA(x1,y1,z1,px,py,pz,xi,yi,zi);
+                             Double_t inter = 0.0;
+                             GetPOCA(x1,y1,z1,px,py,pz,inter);
                              //std::cout << "xi:" << xi << "yi:" << yi <<  "zi:" << zi <<  endl; 
                              //Intx_vs_Inty->Fill(xi,yi);
 
@@ -920,10 +912,8 @@ cout<<"+----------------+"<<endl;
 
                             //Perform Kalman here.
                             //Initial state predictions for protons.
-
-                             TMatrixD H_1(3,6);
-                             // Get the measurement matrix
-                             GetMeasurementMatrix(H_1, px, py, pz, x1, y1, z1);
+                             Int_t i = 0;
+ 			     while(inter >0.1){
 
 
 
@@ -932,9 +922,9 @@ cout<<"+----------------+"<<endl;
                              //updates
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
 
-                             xaxis[iclus] = xi;
-                             yaxis[iclus] = yi;
-                             zaxis[iclus] = zi;
+                             xaxis[iclus] = x1;
+                             yaxis[iclus] = y1;
+                             zaxis[iclus] = z1;
                              //std::cout << "x:" <<xaxis[iclus] <<"y:" << yaxis[iclus] << "z:"  << zaxis[iclus]<< endl;
                              Double_t Matrix_Y[3] = {xaxis[iclus],yaxis[iclus],zaxis[iclus]};
                              Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
@@ -947,7 +937,9 @@ cout<<"+----------------+"<<endl;
                             // x_pred.Print(); 
                            //  std::cout << "the predicted covariance:" <<std::endl; 
                            //  P_pred.Print();
-                             kx_vs_ky->Fill(X_1(0,0), X_1(1,0)); 
+                             kx_vs_ky->Fill(X_1(0,0), X_1(1,0));
+                             i+=1; 
+                             }
 
 
                             //Y_1.Print();
