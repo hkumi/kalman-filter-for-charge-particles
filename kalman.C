@@ -324,22 +324,12 @@ void generateGaussianNoise(TMatrixD &Q, Double_t mean, Double_t stdDev)
     Q.ResizeTo(rows, cols);
     Q.Zero();
 
-    // Set up random number generator with Gaussian distribution
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::normal_distribution<Double_t> dist(mean, stdDev);
 
-    // Fill matrix with random Gaussian noise
-    for (Int_t i = 0; i < rows; i++) {
-        for (Int_t j = 0; j < cols; j++) {
-            Q(i, j) = dist(gen);
-        }
-    }
 }
 
 
 
-void generateMeasurementNoise(TMatrixD& R, Double_t mean, Double_t stdDev)
+void generateMeasurementNoise(TMatrixD& R, Double_t xvariance, Double_t yvariance)
 {
     // Define the size of the matrix
     Int_t rows = 3;
@@ -349,17 +339,12 @@ void generateMeasurementNoise(TMatrixD& R, Double_t mean, Double_t stdDev)
     R.ResizeTo(rows, cols);
     R.Zero();
 
-    // Set up random number generator with Gaussian distribution
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::normal_distribution<Double_t> dist(mean, stdDev);
+    R(0,0) = 1e-6;
 
-    // Fill matrix with random Gaussian noise
-    for (Int_t i = 0; i < rows; i++) {
-        for (Int_t j = 0; j < cols; j++) {
-            R(i, j) = dist(gen);
-        }
-    }
+    R(1,1) = 1e-6;
+
+    R(2,2) = 1e-6;
+
 }
 
 
@@ -504,22 +489,21 @@ void GetMeasurementMatrix(TMatrixD& H_k, Double_t px, Double_t py, Double_t pz, 
     H_k.ResizeTo(rows, cols);
     H_k.Zero();
 
-    // Calculate the coefficients of the plane equation
-    Double_t a = px;
-    Double_t b = py;
-    Double_t c = pz;
-    Double_t d = a * x1 + b * y1 + c * z1;
+    Double_t d = GetVirtualPlane(px,py,pz,x1,y1,z1);
+    Double_t dx = px;
+    Double_t dy = py;
+    Double_t dz = pz;
+    Double_t t = d - (px*x1 + py*y1 + pz*z1)  / (px*dx + py*dy + pz*dz);                       // calculate the intersection
+
 
     // Set the values of the measurement matrix
-    H_k(0, 0) = a;
-    H_k(1, 1) = b;
-    H_k(2, 2) = c;
-    H_k(0, 3) = -xi;
-    H_k(1, 4) = -yi;
-    H_k(2, 5) = -zi;
+    H_k(0, 0) = 1;
+    H_k(1, 1) = 1;
+    H_k(2, 2) = 1;
+
 }
 
-void ProjectMeasurement(TMatrixD& h_k, TMatrixD& state_k, Double_t px, Double_t py, Double_t pz, Double_t x1, Double_t y1, Double_t z1) {
+void ProjectMeasurement(TMatrixD& h_k, TMatrixD state_k, Double_t px, Double_t py, Double_t pz, Double_t x1, Double_t y1, Double_t z1) {
     // Define the measurement matrix
     TMatrixD H_k(3, 6);
 
@@ -864,7 +848,6 @@ cout<<"+----------------+"<<endl;
 
                         TMatrixD x_pred(6,1);
                         TMatrixD P_pred(6,6);
-                        TMatrixD H_1(3,6);
                         TMatrixD K(6,3);
                         TMatrixD Y_1(3,1); //Observation matrix
                         TMatrixD C_1(3,3);
@@ -880,9 +863,6 @@ cout<<"+----------------+"<<endl;
 
                         TMatrixD X_1(6,1);
         		statepred(X_1);
-
-                        Double_t Matrix_H[18] =  {1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0};
-                        H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
 
                         // Error in Measurement.
                         TMatrixD R_1(3,3);
@@ -940,6 +920,13 @@ cout<<"+----------------+"<<endl;
 
                             //Perform Kalman here.
                             //Initial state predictions for protons.
+
+                             TMatrixD H_1(3,6);
+                             // Get the measurement matrix
+                             GetMeasurementMatrix(H_1, px, py, pz, x1, y1, z1);
+
+
+
                              x_pred = (F * X_1) ;
                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
                              //updates
@@ -960,7 +947,7 @@ cout<<"+----------------+"<<endl;
                             // x_pred.Print(); 
                            //  std::cout << "the predicted covariance:" <<std::endl; 
                            //  P_pred.Print();
-                             kx_vs_ky->Fill(x_pred(0,0), x_pred(1,0)); 
+                             kx_vs_ky->Fill(X_1(0,0), X_1(1,0)); 
 
 
                             //Y_1.Print();
