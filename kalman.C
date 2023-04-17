@@ -314,7 +314,7 @@ void Jacobi_matrice(TMatrixD &Jacobi_matrix){
 
 // Define a functions to calculate the process noise matrix Q .
 //this is a 6*6 matrice for my case. 
-void generateGaussianNoise(TMatrixD &Q, Double_t mean, Double_t stdDev)
+void generateGaussianNoise(TMatrixD &Q)
 {
     // Define the size of the matrix
     Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
@@ -329,7 +329,7 @@ void generateGaussianNoise(TMatrixD &Q, Double_t mean, Double_t stdDev)
 
 
 
-void generateMeasurementNoise(TMatrixD& R, Double_t xvariance, Double_t yvariance)
+void generateMeasurementNoise(TMatrixD& R)
 {
     // Define the size of the matrix
     Int_t rows = 3;
@@ -339,11 +339,11 @@ void generateMeasurementNoise(TMatrixD& R, Double_t xvariance, Double_t yvarianc
     R.ResizeTo(rows, cols);
     R.Zero();
 
-    R(0,0) = 1e-6;
+    R(0,0) = 1e-1;
 
-    R(1,1) = 1e-6;
+    R(1,1) = 1e-1;
 
-    R(2,2) = 1e-6;
+    R(2,2) = 1e-1;
 
 }
 
@@ -365,17 +365,17 @@ void Ini_P(TMatrixD &P){
 
         // Define the  matrixes to hold covariance matrix.
 
-        P(0,0) = 1e-4;
+        P(0,0) = 1e-2;
 
-        P(1,1) = 1e-4;
+        P(1,1) = 1e-2;
 
-        P(2,2) = 1e-4;
+        P(2,2) = 1e-2;
 
-        P(3,3) = 1e-7;
+        P(3,3) = 1e-5;
 
-        P(4,4) = 1e-7;
+        P(4,4) = 1e-5;
 
-        P(5,5) = 1e-7;
+        P(5,5) = 1e-5;
 
 
 
@@ -412,25 +412,6 @@ void I_matrix(TMatrixD &I){
 
 }
 
-//Define the initial predicted state for the kalman state vectors. 
-
-void statepred(TMatrixD &Initial_state){
-
-
-// Define the size of the matrix
-        Int_t rows = 6; // the number of rows. 
-        Int_t cols = 1; // the number of cols.
-        Double_t Am = 1.007; // atomic mass of proton in u. 
-
- // Define the initial conditions
-         Initial_state(0,0) = 0.0;      // initial x position   unit in m.
-         Initial_state(1,0) = 0.0;      // initial y position  unit in m
-         Initial_state(2,0) = 0.0;      // initial z position  unit in m
-         Initial_state(3,0) = 10e6 * Am;     // initial x momentum unit in u m/s
-         Initial_state(4,0) = 10e6 * Am;     // initial y momentum  unit in u m/s
-         Initial_state(5,0) = 10e6 * Am ;     // initial z momentum unit in u m/s.
-
-}
 
 Double_t GetPhi(Double_t x1, Double_t y1, Double_t x2, Double_t y2) {
          Double_t phi = TMath::ATan2(y2 - y1, -(x2 - x1));
@@ -459,19 +440,50 @@ Double_t  GetVirtualPlane( Double_t px, Double_t py, Double_t pz, Double_t x, Do
           Double_t b = py;
           Double_t c = pz;
           Double_t d = a * x + b * y + c * z;
+         // std::cout<< "px:" <<px << "py:" << py << "pz:" << pz << endl<<endl;
           return d;
 
 }
 
 
-void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz, Double_t& t) {
+void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz, Double_t& xi,Double_t& yi,Double_t& zi) {
      Double_t d = GetVirtualPlane(px,py,pz,x1,y1,z1);
+   //  std::cout<<d<<endl<<endl;
      Double_t dx = px;
      Double_t dy = py;
      Double_t dz = pz;
-     t = d - (px*x1 + py*y1 + pz*z1)  / (px*dx + py*dy + pz*dz);                       // calculate the intersection
+     Double_t t = d - (px*x1 + py*y1 + pz*z1)  / (px*dx + py*dy + pz*dz);                       // calculate the intersection
+   //  std::cout<<"the value of t: " << t<<endl<<endl;
+     xi = x1+t*dx;
+     yi = y1+t*dy;
+     zi = z1+t*dz;
+     //std::cout<<"the value of x,y,z: " << xi<< yi << zi << endl<<endl;
 
 }
+
+
+//define the predicted state.
+void statepred(TMatrixD &Initial_state,Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz){
+
+
+// Define the size of the matrix
+        Int_t rows = 6; // the number of rows. 
+        Int_t cols = 1; // the number of cols.
+        Double_t Am = 1.007; // atomic mass of proton in u.
+        Double_t xi,yi,zi = 0.0;
+
+        GetPOCA(x1, y1, z1,  px,  py, pz,  xi, yi,zi); 
+
+ // Define the initial conditions
+         Initial_state(0,0) = xi;      // initial x position   unit in m.
+         Initial_state(1,0) = yi;      // initial y position  unit in m
+         Initial_state(2,0) = zi;      // initial z position  unit in m
+         Initial_state(3,0) = 10e6 * Am;     // initial x momentum unit in u m/s
+         Initial_state(4,0) = 10e6 * Am;     // initial y momentum  unit in u m/s
+         Initial_state(5,0) = 10e6 * Am ;     // initial z momentum unit in u m/s.
+
+}
+
 
 
 void GetMeasurementMatrix(TMatrixD& H_k) {
@@ -816,6 +828,7 @@ cout<<"+----------------+"<<endl;
                         }
 
                         Double_t theta = track.GetGeoTheta();
+                        theta = theta * TMath::RadToDeg();
                         Double_t rad   = track.GetGeoRadius();
                         Double_t B_f = 3.0;                         //in Tesla.
                         Double_t brho = B_f * rad / TMath::Sin(theta) / 1000.0;     //in Tm.
@@ -842,14 +855,11 @@ cout<<"+----------------+"<<endl;
 
 
                         TMatrixD Q(6,6);
-                        generateGaussianNoise(Q, 0.0, 1.0); // Generates a 6x6 matrix of Gaussian noise with mean 0 and standard deviation 1
-                         Q.Print();
+                        generateGaussianNoise(Q); // Generates a 6x6 matrix of Gaussian noise with mean 0 and standard deviation 1
+                        //Q.Print();
 
                         TMatrixD P(6,6);
                         Ini_P(P);
-
-                        TMatrixD X_1(6,1);
-        		statepred(X_1);
 
                         TMatrixD H_1(3,6);
                         // Get the measurement matrix
@@ -858,7 +868,8 @@ cout<<"+----------------+"<<endl;
 
                         // Error in Measurement.
                         TMatrixD R_1(3,3);
-                        generateMeasurementNoise(R_1,0.0,1.0);
+                        generateMeasurementNoise(R_1);
+                        //R_1.Print();
 
                         Double_t Matrix_C[9] =  {1,0,0,0,1,0,0,0,1};
                         C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
@@ -900,11 +911,10 @@ cout<<"+----------------+"<<endl;
                              auto px = p * cos(phiDeg) * sin(theta);
                              auto py = p * sin(phiDeg) * sin(theta);
                              auto pz = p * cos(theta);
-                             //std::cout << px << " ," << py << " ," << pz << std::endl;
+                             std::cout<< "px:" <<px << "py:" << py << "pz:" << pz << endl<<endl;
                              // Plane equation: ax + by + cz = d
                              Double_t plane = GetVirtualPlane(px,py,pz,x1,y1,z1);
-                             Double_t inter = 0.0;
-                             GetPOCA(x1,y1,z1,px,py,pz,inter);
+
                              //std::cout << "xi:" << xi << "yi:" << yi <<  "zi:" << zi <<  endl; 
                              //Intx_vs_Inty->Fill(xi,yi);
 
@@ -912,9 +922,9 @@ cout<<"+----------------+"<<endl;
 
                             //Perform Kalman here.
                             //Initial state predictions for protons.
-                             Int_t i = 0;
- 			     while(inter >0.1){
 
+                             TMatrixD X_1(6,1);
+                             statepred(X_1,  x1, y1,  z1, px, py, pz);
 
 
                              x_pred = (F * X_1) ;
@@ -938,8 +948,7 @@ cout<<"+----------------+"<<endl;
                            //  std::cout << "the predicted covariance:" <<std::endl; 
                            //  P_pred.Print();
                              kx_vs_ky->Fill(X_1(0,0), X_1(1,0));
-                             i+=1; 
-                             }
+
 
 
                             //Y_1.Print();
@@ -954,6 +963,7 @@ cout<<"+----------------+"<<endl;
 
 
         }
+
 
 c2->cd(1);
         angle_vs_energy_pattern->SetMarkerStyle(20);
