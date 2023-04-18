@@ -414,7 +414,7 @@ void I_matrix(TMatrixD &I){
 
 
 Double_t GetPhi(Double_t x1, Double_t y1, Double_t x2, Double_t y2) {
-         Double_t phi = TMath::ATan2(y2 - y1, -(x2 - x1));
+         Double_t phi = TMath::ATan2(y2 - y1, x2 - x1);
          Double_t phiDeg;
          if (phi < 0){
             phiDeg = 360+ phi*TMath::RadToDeg();
@@ -828,7 +828,7 @@ cout<<"+----------------+"<<endl;
                         }
 
                         Double_t theta = track.GetGeoTheta();
-                        theta = theta * TMath::RadToDeg();
+                      //  theta = theta * TMath::RadToDeg();
                         Double_t rad   = track.GetGeoRadius();
                         Double_t B_f = 3.0;                         //in Tesla.
                         Double_t brho = B_f * rad / TMath::Sin(theta) / 1000.0;     //in Tm.
@@ -836,7 +836,7 @@ cout<<"+----------------+"<<endl;
                         Double_t Am = 1.007; // atomic mass of proton in u. 
                         Double_t Z = 1.0;
                         Get_Energy(Am, Z, brho, ener);
-                        angle_vs_energy_pattern->Fill(theta * TMath::RadToDeg(), ener);
+                        angle_vs_energy_pattern->Fill(theta* TMath::RadToDeg() , ener);
                         Double_t p = brho * Z * 2.99792458*100.0;      //Magnitude of the momentum In MeV/c.
                        // std::cout << "This particle has:";
                        // std:: cout << "Ener:"<<ener<<" Momentum:" << p << " and"   <<  " Magnetic Rigidity: " << brho <<  endl;
@@ -845,6 +845,33 @@ cout<<"+----------------+"<<endl;
 
                         AtHitCluster iniCluster;
                         AtHitCluster SecCluster;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                        Double_t zIniCal = 0.0;
+                        bool simulationConv = 0; 
+                        Double_t thetaConv;
+                        if (simulationConv) {
+                           thetaConv = 180.0 - theta * TMath::RadToDeg();
+                           } else {
+                             thetaConv = theta * TMath::RadToDeg();
+                           }
+
+                        if (thetaConv < 90.0) {
+                            iniCluster =hitClusterArray->back(); // NB: Use back because We do not reverse the cluster vector like in AtGenfit!
+                            iniPos = iniCluster.GetPosition();
+                            zIniCal = 1000.0 - iniPos.Z();
+                        } else if (thetaConv > 90.0) {
+                          iniCluster = hitClusterArray->front();
+                          iniPos = iniCluster.GetPosition();
+                          zIniCal = iniPos.Z();
+                        }
+
+                        // Skip border angles
+                        if (theta * TMath::RadToDeg() < 10 || theta * TMath::RadToDeg() > 170)
+                            continue;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
                         TMatrixD x_pred(6,1);
                         TMatrixD P_pred(6,6);
@@ -890,9 +917,13 @@ cout<<"+----------------+"<<endl;
                               auto inipos = Cluster1.GetPosition();
                               Double_t x1 = inipos.X();
                               Double_t y1 = inipos.Y();
-                              Double_t z1 = inipos.Z();
-                            //  std::cout << x1<<","<<y1<< ","<< z1<<endl;
+                              //Double_t z1 = zIniCal;
+                              Double_t z1 = iniPos.Z();
+                             // std::cout << x1<<","<<y1<< ","<< z1<<endl;
                               Double_t distance = TMath::Sqrt(x1 * x1 + y1 * y1);
+                              //if (distance > 50.0)
+                                // continue;
+
                               Z_vs_Y->Fill(x1,y1);
 
                               // Select another cluster to compare with Cluster1
@@ -908,10 +939,10 @@ cout<<"+----------------+"<<endl;
 
                              phi_pattern->Fill(phiDeg);
 
-                             auto px = p * cos(phiDeg) * sin(theta);
-                             auto py = p * sin(phiDeg) * sin(theta);
-                             auto pz = p * cos(theta);
-                             std::cout<< "px:" <<px << "py:" << py << "pz:" << pz << endl<<endl;
+                             auto px = p * cos(phiDeg) * sin(theta *TMath::RadToDeg());
+                             auto py = p * sin(phiDeg) * sin(theta *TMath::RadToDeg());
+                             auto pz = p * cos(theta *TMath::RadToDeg());
+                             //std::cout<< "px:" <<px << "py:" << py << "pz:" << pz << endl<<endl;
                              // Plane equation: ax + by + cz = d
                              Double_t plane = GetVirtualPlane(px,py,pz,x1,y1,z1);
 
@@ -932,9 +963,9 @@ cout<<"+----------------+"<<endl;
                              //updates
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
 
-                             xaxis[iclus] = x1;
-                             yaxis[iclus] = y1;
-                             zaxis[iclus] = z1;
+                             xaxis[iclus] = x2;
+                             yaxis[iclus] = y2;
+                             zaxis[iclus] = z2;
                              //std::cout << "x:" <<xaxis[iclus] <<"y:" << yaxis[iclus] << "z:"  << zaxis[iclus]<< endl;
                              Double_t Matrix_Y[3] = {xaxis[iclus],yaxis[iclus],zaxis[iclus]};
                              Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
@@ -944,7 +975,7 @@ cout<<"+----------------+"<<endl;
                              P =(I-K*H_1)*P_pred;
 
                          //    std::cout << "the predicted state:" <<std::endl;
-                            // x_pred.Print(); 
+                             H_1.Print(); 
                            //  std::cout << "the predicted covariance:" <<std::endl; 
                            //  P_pred.Print();
                              kx_vs_ky->Fill(X_1(0,0), X_1(1,0));
