@@ -312,8 +312,115 @@ void Jacobi_matrice(TMatrixD &Jacobi_matrix){
 
 }
 
+// Obtains last Z value from a hitClusterArray
+Double_t LastZValue(std::vector<AtHitCluster> *pHitClusterArray)
+{
+    int lastClusterIndex = pHitClusterArray->size() - 1;
+    AtHitCluster lastCluster;
+
+    lastCluster = pHitClusterArray->at(lastClusterIndex);
+    auto lastPositionCluster = lastCluster.GetPosition();
+    Double_t zPos = lastPositionCluster.Z();
+
+    return zPos;
+}
+
+/// Obtains the index of the maximum value in a vector of doubles
+Int_t GetIndexOfMaxValue(std::vector<Double_t> values)
+{
+    Int_t index = std::distance(values.begin(), std::max_element(values.begin(), values.end()));
+
+    return index;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// Selects the closer track to the vertex, discarding the beam track. 
+/// Vector with one track are accepted if the theta angle is greater than 20º.
+/// If the track does not fulfill the requirements a dummy track is generated
+///    with a default track ID of -1.
+AtTrack TrackSelector(std::vector<AtTrack> trackCandidates, std::vector<Double_t> thetaValues)
+{
+    Int_t numberOfTracks = trackCandidates.size(); // Gets number of tracks
+    cout<<"Track candidates: "<<numberOfTracks<<endl;
+
+    //Discarding vectors with no tracks
+    if ( numberOfTracks >= 1)
+    {
+   
+        // One track with a theta angle > 20º is acceptable
+        if (numberOfTracks == 1)
+        { 
+            if(180-thetaValues[0]*TMath::RadToDeg()>20.)
+            {
+               AtTrack selectedTrack = trackCandidates[0];
+               return selectedTrack;
+            } else {AtTrack nullTrack; return nullTrack;}
+        }
+        else 
+        { 
+            Int_t thetaIndex = GetIndexOfMaxValue(thetaValues);// This corresponds to the max value of theta in rad (the minimum value in  degrees after the following conversion: 180-theta)
+            trackCandidates.erase(trackCandidates.begin() + thetaIndex);
+            std::vector<Double_t> zValues = {};
+
+            for (auto track = trackCandidates.begin(); track != trackCandidates.end(); ++track) // Loop over track candidatess
+            { 
+                auto pHitClusterArray = track->GetHitClusterArray();
+                zValues.push_back(LastZValue(pHitClusterArray)); // Get Max Z value of the Clusters
+            }
+
+            Int_t trackIndex = GetIndexOfMaxValue(zValues);
+            AtTrack selectedTrack = trackCandidates[trackIndex];
+            return selectedTrack;
+        }
+    } else {AtTrack nullTrack; return nullTrack;}
+} 
+
+
+////////////////////////////////////////////////////////////////////////
+/// Calculates the phi angle between the first [1] and second [2] points 
+///   of a given track. 
+/// The x and y values taken for the calculus are independent of the 
+///   quadrant where the cluster points are located, it only matters the 
+///   relative position between them.
+/// These values are later used in the TMath::ATan2(y, x) function that
+///   returns a positive value in radians for the 1st and 2nd quadrants,
+///   and a negative value in radians for the 3rd and 4th quadrants.
+/// A conversion to degrees is performed and a final correction for the
+///   negative values takes place so the angle is always referred to the
+///   same point.
+Double_t GetPhiAngle(AtTrack goodTrack)
+{
+    AtHitCluster firstCluster, secondCluster;
+    auto hitClusterArray = goodTrack.GetHitClusterArray();
+    
+    firstCluster = hitClusterArray->at(1);
+    secondCluster = hitClusterArray->at(2);
+    
+    auto firstPosition = firstCluster.GetPosition();
+    auto secondPosition = secondCluster.GetPosition();
+    Double_t yValue = secondPosition.Y() - firstPosition.Y();
+    Double_t xValue = secondPosition.X() - firstPosition.X();
+   
+    Double_t phiAngleRad = TMath::ATan2(yValue,xValue);
+    Double_t phiAngleDeg;
+    if (phiAngleRad<0)
+    {
+        phiAngleDeg = 360 + phiAngleRad*TMath::RadToDeg();
+        return phiAngleDeg;
+    } 
+    else
+    {
+        phiAngleDeg = phiAngleRad*TMath::RadToDeg();
+        return phiAngleDeg;
+    }
+}
+
+
+
 // Define a functions to calculate the process noise matrix Q .
 //this is a 6*6 matrice for my case. 
+ 
 void generateGaussianNoise(TMatrixD &Q)
 {
     // Define the size of the matrix
@@ -339,11 +446,11 @@ void generateMeasurementNoise(TMatrixD& R)
     R.ResizeTo(rows, cols);
     R.Zero();
 
-    R(0,0) = 1e-1;
+    R(0,0) = 10;
 
-    R(1,1) = 1e-1;
+    R(1,1) = 10;
 
-    R(2,2) = 1e-1;
+    R(2,2) = 10;
 
 }
 
@@ -365,17 +472,17 @@ void Ini_P(TMatrixD &P){
 
         // Define the  matrixes to hold covariance matrix.
 
-        P(0,0) = 1e-2;
+        P(0,0) = 10;
 
-        P(1,1) = 1e-2;
+        P(1,1) = 10;
 
-        P(2,2) = 1e-2;
+        P(2,2) = 10;
 
-        P(3,3) = 1e-5;
+        P(3,3) = 10;
 
-        P(4,4) = 1e-5;
+        P(4,4) = 10;
 
-        P(5,5) = 1e-5;
+        P(5,5) = 10;
 
 
 
@@ -470,6 +577,7 @@ void statepred(TMatrixD &Initial_state,Double_t x1, Double_t y1, Double_t z1, Do
         Int_t rows = 6; // the number of rows. 
         Int_t cols = 1; // the number of cols.
         Double_t Am = 1.007; // atomic mass of proton in u.
+        Double_t m = 1.6726*TMath::Power(10,-27);       // mass of the particle in kg
         Double_t xi,yi,zi = 0.0;
 
         GetPOCA(x1, y1, z1,  px,  py, pz,  xi, yi,zi); 
@@ -478,9 +586,9 @@ void statepred(TMatrixD &Initial_state,Double_t x1, Double_t y1, Double_t z1, Do
          Initial_state(0,0) = xi;      // initial x position   unit in m.
          Initial_state(1,0) = yi;      // initial y position  unit in m
          Initial_state(2,0) = zi;      // initial z position  unit in m
-         Initial_state(3,0) = 10e6 * Am;     // initial x momentum unit in u m/s
-         Initial_state(4,0) = 10e6 * Am;     // initial y momentum  unit in u m/s
-         Initial_state(5,0) = 10e6 * Am ;     // initial z momentum unit in u m/s.
+         Initial_state(3,0) = 10e6 * m;     // initial x momentum unit in kg m/s
+         Initial_state(4,0) = 10e6 * m;     // initial y momentum  unit in kg m/s
+         Initial_state(5,0) = 10e6 * m ;     // initial z momentum unit in kg m/s.
 
 }
 
@@ -675,15 +783,17 @@ cout<<"+----------------+"<<endl;
 
 	// Define matrix to hold state vectors
         TMatrixD  state_matrix(rows,cols);
+        Double_t m = 1.6726*TMath::Power(10,-27);       // mass of the particle in kg
+
 
         // Fill in matrix with state vectors
         for (int j = 0; j < i; j++) {
             state_matrix(0,j) = x[j];
             state_matrix(1,j) = y[j];
             state_matrix(2,j) = z[j];
-            state_matrix(3,j) = vx[j];
-            state_matrix(4,j) = vy[j];
-            state_matrix(5,j) = vz[j];
+            state_matrix(3,j) = vx[j]*m;
+            state_matrix(4,j) = vy[j]*m;
+            state_matrix(5,j) = vz[j]*m;
         }
 
 
@@ -731,8 +841,8 @@ cout<<"+----------------+"<<endl;
             F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
           // state_vector.Print();
         }
-/*
 
+/*
 c1->cd(1);
         rx_vs_ry->Draw();
         rx_vs_ry->SetMarkerStyle(21);
@@ -788,7 +898,10 @@ cout<<"+----------------+"<<endl;
        // TMatrixD plane1 = ();
         //read_file(files, nEvents);
 
-
+        /*-----------
+         Fist loop. Loops over all
+         the files that need to be analize
+        -----------*/
         for (auto iFile = 0; iFile < files.size(); ++iFile) {
 
             TString mcFileNameHead = files[iFile];
@@ -805,30 +918,34 @@ cout<<"+----------------+"<<endl;
 
             ROOT::Math::XYZPoint iniPos;
             ROOT::Math::XYZPoint secPos;
-            //Loop over  the events in the simulation. 
+            
+
+            /*----------
+            Looping over all the events in
+            each of the root files
+            -----------*/ 
             for (Int_t i = first_Event; i < last_Event; i++) {
-               // std::cout << " Event Number : " << i << " has " << "\n";
+
+                std::vector<AtTrack> availableTracks = {}; // Tracks founded in the current event
+                std::vector<Double_t> thetaValues = {}; // Theta values for each track founded in the current event
+
                 Reader1.Next();
 
                 AtPatternEvent *patternEvent = (AtPatternEvent *)eventArray->At(0);
 
                 if (patternEvent) {
                     std::vector<AtTrack> &patternTrackCand = patternEvent->GetTrackCand();
-                 //   std::cout <<  patternTrackCand.size() << " Number of pattern tracks "<< "\n";
 
                     for (auto track : patternTrackCand) {
 
-                     //   std::cout << " with === Track " << track.GetTrackID() << " also having: "<< track.GetHitClusterArray()->size() << " clusters "  << "\n";
-                       // std::cout <<endl;
+                       std::cout << " with === Track " << track.GetTrackID() << " also having: "<< track.GetHitClusterArray()->size() << " clusters "  << "\n";
+                       std::cout <<endl;
 
                         if ( track.GetHitClusterArray()->size() < 5) {
-                           //std::cout << " Track is noise or has less than 5 clusters! "  << "\n";
-                           //std::cout<<endl;
                            continue;
                         }
 
                         Double_t theta = track.GetGeoTheta();
-                      //  theta = theta * TMath::RadToDeg();
                         Double_t rad   = track.GetGeoRadius();
                         Double_t B_f = 3.0;                         //in Tesla.
                         Double_t brho = B_f * rad / TMath::Sin(theta) / 1000.0;     //in Tm.
@@ -845,33 +962,26 @@ cout<<"+----------------+"<<endl;
 
                         AtHitCluster iniCluster;
                         AtHitCluster SecCluster;
+                        // Vectors for selecting the right track
+                        availableTracks.push_back(track);
+                        thetaValues.push_back(theta);
 
+                        // Selecting track to get phi angle
+                        AtTrack goodTrack = TrackSelector(availableTracks, thetaValues);
+                        cout<<"ID: " << goodTrack.GetTrackID()<<endl;
+                        if (goodTrack.GetTrackID() != -1)
+                        {
+                           Double_t phi = GetPhiAngle(goodTrack);
+                           cout<<phi<<endl<<endl;
+                           phi_pattern->Fill(phi);
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        Double_t zIniCal = 0.0;
-                        bool simulationConv = 0; 
-                        Double_t thetaConv;
-                        if (simulationConv) {
-                           thetaConv = 180.0 - theta * TMath::RadToDeg();
-                           } else {
-                             thetaConv = theta * TMath::RadToDeg();
-                           }
-
-                        if (thetaConv < 90.0) {
-                            iniCluster =hitClusterArray->back(); // NB: Use back because We do not reverse the cluster vector like in AtGenfit!
-                            iniPos = iniCluster.GetPosition();
-                            zIniCal = 1000.0 - iniPos.Z();
-                        } else if (thetaConv > 90.0) {
-                          iniCluster = hitClusterArray->front();
-                          iniPos = iniCluster.GetPosition();
-                          zIniCal = iniPos.Z();
                         }
 
+
+/*
                         // Skip border angles
                         if (theta * TMath::RadToDeg() < 10 || theta * TMath::RadToDeg() > 170)
                             continue;
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
                         TMatrixD x_pred(6,1);
                         TMatrixD P_pred(6,6);
@@ -910,6 +1020,7 @@ cout<<"+----------------+"<<endl;
 
                            std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
 
+
                            for(auto iclus = 0; iclus < hitClusterArray->size()-1; ++iclus){
                             //  std::cout << "Loop iteration: " << iclus << std::endl;
                               //std::cout << "Vector size: " << hitClusterArray->size() << std::endl;
@@ -918,7 +1029,7 @@ cout<<"+----------------+"<<endl;
                               Double_t x1 = inipos.X();
                               Double_t y1 = inipos.Y();
                               //Double_t z1 = zIniCal;
-                              Double_t z1 = iniPos.Z();
+                              Double_t z1 = inipos.Z();
                              // std::cout << x1<<","<<y1<< ","<< z1<<endl;
                               Double_t distance = TMath::Sqrt(x1 * x1 + y1 * y1);
                               //if (distance > 50.0)
@@ -951,41 +1062,49 @@ cout<<"+----------------+"<<endl;
 
 
 
+
                             //Perform Kalman here.
                             //Initial state predictions for protons.
 
-                             TMatrixD X_1(6,1);
-                             statepred(X_1,  x1, y1,  z1, px, py, pz);
+                             TMatrixD X_Ini(6,1);
+                             TMatrixD X_Estimate(6,1);
+                             statepred(X_Ini,  x1, y1,  z1, px, py, pz);
 
 
-                             x_pred = (F * X_1) ;
+                             x_pred = (F * X_Ini) ;
+
                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
                              //updates
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
 
-                             xaxis[iclus] = x2;
-                             yaxis[iclus] = y2;
-                             zaxis[iclus] = z2;
+                             xaxis[iclus] = x1;
+                             yaxis[iclus] = y1;
+                             zaxis[iclus] = z1;
                              //std::cout << "x:" <<xaxis[iclus] <<"y:" << yaxis[iclus] << "z:"  << zaxis[iclus]<< endl;
                              Double_t Matrix_Y[3] = {xaxis[iclus],yaxis[iclus],zaxis[iclus]};
                              Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
 
                              Z_1 = C_1* Y_1;
-                             X_1 = x_pred + (K *(Z_1-(H_1*x_pred)));
+                             X_Estimate = x_pred + (K *(Z_1-(H_1*x_pred)));
                              P =(I-K*H_1)*P_pred;
+                             X_Ini = X_Estimate;
 
-                         //    std::cout << "the predicted state:" <<std::endl;
-                             H_1.Print(); 
-                           //  std::cout << "the predicted covariance:" <<std::endl; 
-                           //  P_pred.Print();
-                             kx_vs_ky->Fill(X_1(0,0), X_1(1,0));
+                             std::cout << "the predicted state:" <<std::endl;
+                             X_Ini.Print(); 
+                             std::cout << "the predicted covariance:" <<std::endl; 
+                             K.Print();
+
+
+                             kx_vs_ky->Fill(X_Estimate(0,0), X_Estimate(1,0));
 
 
 
-                            //Y_1.Print();
+                            x_pred.Print();
                            }
 
-                        }
+
+
+                        }*/
 
                     }
 
@@ -995,138 +1114,30 @@ cout<<"+----------------+"<<endl;
 
         }
 
-
+/*
 c2->cd(1);
-        angle_vs_energy_pattern->SetMarkerStyle(20);
+        angle_vs_energy_pattern->SetMarkerStyle(15);
         angle_vs_energy_pattern->SetLineWidth(1);
         angle_vs_energy_pattern->Draw();
 c2->cd(2);
-        Z_vs_Y->SetMarkerStyle(20);
+        Z_vs_Y->SetMarkerStyle(15);
         Z_vs_Y->SetLineWidth(1);
         Z_vs_Y->Draw();
-
+*/
 c2->cd(3);
-        phi_pattern->SetMarkerStyle(20);
+        phi_pattern->SetMarkerStyle(15);
         phi_pattern->SetLineWidth(1);
         phi_pattern->Draw();
-
-c2->cd(4);
-        kx_vs_ky->SetMarkerStyle(21);
-        kx_vs_ky->SetLineWidth(1);
-        kx_vs_ky->Draw();
-
-
 /*
-
-// We basically just transfer the cordinates into array..
-        Int_t n2 = tcor.size();
-        Double_t xaxis[n],yaxis[n],zaxis[n];
-  
-
-
-        //kalman storage
-        TMatrixD x_pred(6,1);
-        TMatrixD P_pred(6,6);
-        TMatrixD K(6,3);
-  //      TMatrixD H(6,6);
-
-
-       // Initial Values 
-        // Define the initial conditions
-         x[0] = 0.0;      // initial x position
-         y[0] = 0.0;      // initial y position
-         z[0] = 0.0;      // initial z position
-         vx[0] = 1.0;     // initial x velocity
-         vy[0] = 1.0;     // initial y velocity
-         vz[0] = 1.0;     // initial z velocity
-
-
-        TMatrixD X_1(6,1);
-        Double_t Matrix_X[6] = {x[0],y[0],z[0],vx[0],vy[0],vz[0]};
-        X_1.Use(6, 1, Matrix_X);
-   
-        TMatrixD Q(6,6);
-        Process_noise(Q);
-
-        TMatrixD P(6,6);
-        Ini_P(P);
-
-
-        //Measurement matrice. 
-        //Values of the measurements. Should be modified with real data. this is just my example. 
-        //initial values.
-      //  Double_t x1[11] = {0,0.03,0.004,-0.02,-04.93,-05.04,-08.96,-099.35,-073.36,-045.89,-022.58};
-        //Double_t y1[11] ={0,099.6,02.39,05.04,01.09,-02.72,-08.61,-02.64,-01.88,-1.27,02.98};
-        //Double_t z1[11] ={0,49.6,32.39,25.04,30.09,-24.72,-28.61,-24.64,-28.88,24.27,22.98};
-
-       //Beacuse only x, yand z are observed.
-        TMatrixD Z(3,1);
-        TMatrixD Y_1(3,1); //Observation matrix
-        TMatrixD H_1(3,6);
-        TMatrixD R_1(3,3);
-        TMatrixD C_1(3,3);
-
-       //fill the observation matrice.
-         Double_t Matrix_Y[3] ;
-         Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
-
-
-         Double_t Matrix_H[18] =  {1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0};
-         H_1.Use(H_1.GetNrows(), H_1.GetNcols(), Matrix_H);
-
-        // Error in Measurement.
-         Double_t Matrix_R[9] = {1e-4,0,0,0,1e-4,0,0,0,1e-4};
-         R_1.Use(R_1.GetNrows(), R_1.GetNcols(), Matrix_R);
-
-         Double_t Matrix_C[9] =  {1,0,0,0,1,0,0,0,1};
-         C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
-
-
-        //start kalman
-        for (Int_t i=0;i<n2;++i){
-            xaxis[i] = xcor.at(i);
-            zaxis[i] = zcor.at(i);
-            yaxis[i]  = ycor.at(i);
-
-            Double_t Matrix_Y[3] = {xaxis[i],yaxis[i],zaxis[i]};
-            Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
-
-            x_pred = (F * X_1) ; 
-            P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
-        
-
-      //updates
-
-
-
-            K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
-
-            Z = C_1* Y_1;
-            X_1 = x_pred + (K *(Z-(H_1*x_pred)));
-            P =(I-K*H_1)*P_pred;
-
-            std::cout << "the predicted state:" <<std::endl;
-            x_pred.Print(); 
-            std::cout << "the predicted covariance:" <<std::endl; 
-            P_pred.Print();
-             kx_vs_ky->Fill(x_pred(0,0), x_pred(1,0)); 
-            //Z.Print();
-           // std::cout<< "measurement" << Z << "EStimate" << x_pred <<  std::endl;
-
-        }
-
-
-        c2->cd(1);
-        kx_vs_ky->Draw();
-        kx_vs_ky->SetMarkerStyle(21);
+c2->cd(4);
+        kx_vs_ky->SetMarkerStyle(20);
         kx_vs_ky->SetLineWidth(1);
         kx_vs_ky->Draw();
 */
-  //      file.close();
-    //    writefile.close();
+
+
         return(0);
 
 
 }
-
 
