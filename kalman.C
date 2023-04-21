@@ -472,17 +472,17 @@ void Ini_P(TMatrixD &P){
 
         // Define the  matrixes to hold covariance matrix.
 
-        P(0,0) = 10;
+        P(0,0) = 1;
 
-        P(1,1) = 10;
+        P(1,1) = 1;
 
-        P(2,2) = 10;
+        P(2,2) = 1;
 
-        P(3,3) = 10;
+        P(3,3) = 1;
 
-        P(4,4) = 10;
+        P(4,4) = 1;
 
-        P(5,5) = 10;
+        P(5,5) = 1;
 
 
 
@@ -568,6 +568,39 @@ void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Do
 
 }
 
+TMatrixD ExtrapolationToPlane(TMatrixD& initrack, Double_t x, Double_t y, Double_t z, Double_t nx, Double_t ny, Double_t nz)
+{
+    // Define the normal vector to the plane
+    TVector3 n(nx, ny, nz);
+    
+    // Define a point on the plane
+    TVector3 P(x, y, z);
+    
+    // Extract the initial position and momentum from the initial track state
+    Double_t px = initrack(3, 0);
+    Double_t py = initrack(4, 0);
+    Double_t pz = initrack(5, 0);
+    TVector3 pos(initrack(0, 0), initrack(1, 0), initrack(2, 0));
+    TVector3 mom(px, py, pz);
+    
+    // Calculate the distance from the initial position to the plane
+    Double_t d = (P - pos).Dot(n) / mom.Dot(n);
+    std::cout << d<<endl;
+    
+    // Calculate the position of the intersection between the track and the plane
+    TVector3 pos_int = pos + d * mom;
+    
+    // Create a new track state matrix with the extrapolated position and momentum
+    TMatrixD extrap_track(6, 1);
+    extrap_track(0, 0) = pos_int.X();
+    extrap_track(1, 0) = pos_int.Y();
+    extrap_track(2, 0) = pos_int.Z();
+    extrap_track(3, 0) = px;
+    extrap_track(4, 0) = py;
+    extrap_track(5, 0) = pz;
+    
+    return extrap_track;
+}
 
 //define the predicted state.
 void statepred(TMatrixD &Initial_state,Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz){
@@ -586,9 +619,9 @@ void statepred(TMatrixD &Initial_state,Double_t x1, Double_t y1, Double_t z1, Do
          Initial_state(0,0) = xi;      // initial x position   unit in m.
          Initial_state(1,0) = yi;      // initial y position  unit in m
          Initial_state(2,0) = zi;      // initial z position  unit in m
-         Initial_state(3,0) = 10e6 * m;     // initial x momentum unit in kg m/s
-         Initial_state(4,0) = 10e6 * m;     // initial y momentum  unit in kg m/s
-         Initial_state(5,0) = 10e6 * m ;     // initial z momentum unit in kg m/s.
+         Initial_state(3,0) = px;     // initial x momentum unit in kg m/s
+         Initial_state(4,0) = py;     // initial y momentum  unit in kg m/s
+         Initial_state(5,0) = pz ;     // initial z momentum unit in kg m/s.
 
 }
 
@@ -938,9 +971,6 @@ cout<<"+----------------+"<<endl;
 
                     for (auto track : patternTrackCand) {
 
-                       std::cout << " with === Track " << track.GetTrackID() << " also having: "<< track.GetHitClusterArray()->size() << " clusters "  << "\n";
-                       std::cout <<endl;
-
                         if ( track.GetHitClusterArray()->size() < 5) {
                            continue;
                         }
@@ -958,10 +988,7 @@ cout<<"+----------------+"<<endl;
                        // std::cout << "This particle has:";
                        // std:: cout << "Ener:"<<ener<<" Momentum:" << p << " and"   <<  " Magnetic Rigidity: " << brho <<  endl;
                        // std::cout<<endl;
-                        auto hitClusterArray = track.GetHitClusterArray();
 
-                        AtHitCluster iniCluster;
-                        AtHitCluster SecCluster;
                         // Vectors for selecting the right track
                         availableTracks.push_back(track);
                         thetaValues.push_back(theta);
@@ -969,19 +996,58 @@ cout<<"+----------------+"<<endl;
                         // Selecting track to get phi angle
                         AtTrack goodTrack = TrackSelector(availableTracks, thetaValues);
                         cout<<"ID: " << goodTrack.GetTrackID()<<endl;
+                        Double_t phi;
                         if (goodTrack.GetTrackID() != -1)
                         {
-                           Double_t phi = GetPhiAngle(goodTrack);
-                           cout<<phi<<endl<<endl;
+                           phi = GetPhiAngle(goodTrack);
+                           //cout<<phi<<endl<<endl;
                            phi_pattern->Fill(phi);
 
                         }
 
+                        AtHitCluster firstCluster, secondCluster;
+                        auto hitClusterArray = track.GetHitClusterArray();
 
-/*
-                        // Skip border angles
-                        if (theta * TMath::RadToDeg() < 10 || theta * TMath::RadToDeg() > 170)
-                            continue;
+                        firstCluster = hitClusterArray->at(1);
+                        secondCluster = hitClusterArray->at(2);
+
+                        auto firstPosition = firstCluster.GetPosition();
+                        auto secondPosition = secondCluster.GetPosition();
+
+                        Double_t  iniPosX = firstPosition.X();
+                        Double_t iniPosY = firstPosition.Y();
+                        Double_t iniPosZ = firstPosition.Z();
+
+                        std::cout << phi << endl;
+
+                        auto iniPx = p * TMath::Cos(phi * TMath::DegToRad()) * TMath::Sin(theta);        // in MeV/c
+                        auto iniPy = p * TMath::Sin(phi * TMath::DegToRad()) * sin(theta );              // in MeV/c
+                        auto iniPz = p * TMath::Cos(theta);                                              // in MeV/c
+                        //std::cout<< "px:" <<iniPx << "py:" << iniPy << "pz:" << iniPz << endl<<endl;
+
+                        TMatrixD initrack(6, 1);
+                        initrack(0, 0) = iniPosX;
+                        initrack(1, 0) = iniPosY;
+                        initrack(2, 0) = iniPosZ;
+                        initrack(3, 0) = iniPx;
+                        initrack(4, 0) = iniPy;
+                        initrack(5, 0) = iniPz;
+                        initrack.Print();
+
+                        TMatrixD Extrapolated_state(6,1);
+                        statepred(Extrapolated_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
+                        Extrapolated_state.Print();
+
+
+                        /*----------
+                        Looping over all the tracks in
+                        each of the root files to perform kalman
+                        -----------*/ 
+
+
+
+
+
 
                         TMatrixD x_pred(6,1);
                         TMatrixD P_pred(6,6);
@@ -1022,47 +1088,17 @@ cout<<"+----------------+"<<endl;
 
 
                            for(auto iclus = 0; iclus < hitClusterArray->size()-1; ++iclus){
-                            //  std::cout << "Loop iteration: " << iclus << std::endl;
-                              //std::cout << "Vector size: " << hitClusterArray->size() << std::endl;
-                              auto Cluster1 = hitClusterArray->at(iclus+1);
-                              auto inipos = Cluster1.GetPosition();
-                              Double_t x1 = inipos.X();
-                              Double_t y1 = inipos.Y();
-                              //Double_t z1 = zIniCal;
-                              Double_t z1 = inipos.Z();
+                            //  Get the measurements.
+                              auto MeasurementCluster = hitClusterArray->at(iclus);
+                              auto measurements = MeasurementCluster.GetPosition();
+                              Double_t x1 = measurement.X();
+                              Double_t y1 = measurement.Y();
+                              Double_t z1 = measurement.Z();
                              // std::cout << x1<<","<<y1<< ","<< z1<<endl;
-                              Double_t distance = TMath::Sqrt(x1 * x1 + y1 * y1);
-                              //if (distance > 50.0)
-                                // continue;
 
                               Z_vs_Y->Fill(x1,y1);
-
-                              // Select another cluster to compare with Cluster1
-
-                             auto Cluster2 = hitClusterArray->at(iclus);
-                             auto inipos2 = Cluster2.GetPosition();
-                             Double_t x2 = inipos2.X();
-                             Double_t y2 = inipos2.Y();
-                             Double_t z2 = inipos2.Z();
-
-                             // Calculate phi angle between the two points
-                             Double_t phiDeg = GetPhi(x1,y1,x2,y2);
-
-                             phi_pattern->Fill(phiDeg);
-
-                             auto px = p * cos(phiDeg) * sin(theta *TMath::RadToDeg());
-                             auto py = p * sin(phiDeg) * sin(theta *TMath::RadToDeg());
-                             auto pz = p * cos(theta *TMath::RadToDeg());
-                             //std::cout<< "px:" <<px << "py:" << py << "pz:" << pz << endl<<endl;
-                             // Plane equation: ax + by + cz = d
-                             Double_t plane = GetVirtualPlane(px,py,pz,x1,y1,z1);
-
-                             //std::cout << "xi:" << xi << "yi:" << yi <<  "zi:" << zi <<  endl; 
-                             //Intx_vs_Inty->Fill(xi,yi);
-
-
-
-
+/*
+ 
                             //Perform Kalman here.
                             //Initial state predictions for protons.
 
@@ -1099,12 +1135,12 @@ cout<<"+----------------+"<<endl;
 
 
 
-                            x_pred.Print();
+                            x_pred.Print();*/
                            }
 
 
 
-                        }*/
+                        }
 
                     }
 
