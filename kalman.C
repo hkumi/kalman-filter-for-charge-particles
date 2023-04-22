@@ -606,19 +606,12 @@ TMatrixD ExtrapolationToPlane(TMatrixD& initrack, Double_t x, Double_t y, Double
 void statepred(TMatrixD &Initial_state,Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz){
 
 
-// Define the size of the matrix
-        Int_t rows = 6; // the number of rows. 
-        Int_t cols = 1; // the number of cols.
-        Double_t Am = 1.007; // atomic mass of proton in u.
-        Double_t m = 1.6726*TMath::Power(10,-27);       // mass of the particle in kg
-        Double_t xi,yi,zi = 0.0;
-
-        GetPOCA(x1, y1, z1,  px,  py, pz,  xi, yi,zi); 
+ 
 
  // Define the initial conditions
-         Initial_state(0,0) = xi;      // initial x position   unit in m.
-         Initial_state(1,0) = yi;      // initial y position  unit in m
-         Initial_state(2,0) = zi;      // initial z position  unit in m
+         Initial_state(0,0) = x1;      // initial x position   unit in m.
+         Initial_state(1,0) = y1;      // initial y position  unit in m
+         Initial_state(2,0) = z1;      // initial z position  unit in m
          Initial_state(3,0) = px;     // initial x momentum unit in kg m/s
          Initial_state(4,0) = py;     // initial y momentum  unit in kg m/s
          Initial_state(5,0) = pz ;     // initial z momentum unit in kg m/s.
@@ -643,17 +636,6 @@ void GetMeasurementMatrix(TMatrixD& H_k) {
 
 }
 
-void ProjectMeasurement(TMatrixD& h_k, TMatrixD state_k, Double_t px, Double_t py, Double_t pz, Double_t x1, Double_t y1, Double_t z1) {
-    // Define the measurement matrix
-    TMatrixD H_k(3, 6);
-
-    // Get the measurement matrix
-    GetMeasurementMatrix(H_k);
-
-    // Project the measurement
-    h_k.ResizeTo(3, 1);
-    h_k = H_k * state_k;
-}
 
 
 
@@ -901,7 +883,7 @@ c1->cd(1);
         c2->Divide(2, 2);
         c2->Draw();
         TH2F *angle_vs_energy = new TH2F("angle_vs_energy", "angle_vs_energy", 720, 0, 179, 1000, 0, 100.0);
-        TH2F *Z_vs_Y = new TH2F("Z_vs_Y", "Z_vs_Y", 720, 0, -3, 1000, 0, 2.0);
+        TH2F *X_vs_Y = new TH2F("X_vs_Y", "X_vs_Y", 720, 0, -3, 1000, 0, 2.0);
         TH2F *energy_vs_Zorb = new TH2F("energy_vs_Zorb", "energy_vs_Zorb", 720, 0, -5, 100, 0, 5.0);
         TH1F *phi_pattern = new TH1F("phi_pattern", "phi_pattern", 1440, -50, 400);
         TH2F *angle_vs_energy_pattern =new TH2F("angle_vs_energy_pattern", "angle_vs_energy_pattern", 720, 0, 179, 1000, 0, 100.0);
@@ -1035,26 +1017,22 @@ cout<<"+----------------+"<<endl;
                         initrack.Print();
 
                         TMatrixD Extrapolated_state(6,1);
-                        statepred(Extrapolated_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
+                        //statepred(Extrapolated_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
+                        //Extrapolated_state.Print();
+                        Extrapolated_state = ExtrapolationToPlane(initrack,  iniPosX, iniPosY,  iniPosZ, iniPx,  iniPy, iniPz);
                         Extrapolated_state.Print();
-
 
                         /*----------
                         Looping over all the tracks in
                         each of the root files to perform kalman
-                        -----------*/ 
-
-
-
-
-
-
+                        -----------*/
                         TMatrixD x_pred(6,1);
                         TMatrixD P_pred(6,6);
                         TMatrixD K(6,3);
                         TMatrixD Y_1(3,1); //Observation matrix
                         TMatrixD C_1(3,3);
                         TMatrixD Z_1(3,1);
+                        TMatrixD X_Estimate(6,1);
 
 
                         TMatrixD Q(6,6);
@@ -1091,23 +1069,19 @@ cout<<"+----------------+"<<endl;
                             //  Get the measurements.
                               auto MeasurementCluster = hitClusterArray->at(iclus);
                               auto measurements = MeasurementCluster.GetPosition();
-                              Double_t x1 = measurement.X();
-                              Double_t y1 = measurement.Y();
-                              Double_t z1 = measurement.Z();
+                              Double_t x1 = measurements.X();
+                              Double_t y1 = measurements.Y();
+                              Double_t z1 = measurements.Z();
                              // std::cout << x1<<","<<y1<< ","<< z1<<endl;
 
-                              Z_vs_Y->Fill(x1,y1);
-/*
+                              X_vs_Y->Fill(x1,y1);
+
  
                             //Perform Kalman here.
                             //Initial state predictions for protons.
 
-                             TMatrixD X_Ini(6,1);
-                             TMatrixD X_Estimate(6,1);
-                             statepred(X_Ini,  x1, y1,  z1, px, py, pz);
 
-
-                             x_pred = (F * X_Ini) ;
+                             x_pred = (F * Extrapolated_state) ;
 
                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
                              //updates
@@ -1123,19 +1097,15 @@ cout<<"+----------------+"<<endl;
                              Z_1 = C_1* Y_1;
                              X_Estimate = x_pred + (K *(Z_1-(H_1*x_pred)));
                              P =(I-K*H_1)*P_pred;
-                             X_Ini = X_Estimate;
+                             Extrapolated_state = X_Estimate;
 
                              std::cout << "the predicted state:" <<std::endl;
-                             X_Ini.Print(); 
+                             X_Estimate.Print(); 
                              std::cout << "the predicted covariance:" <<std::endl; 
                              K.Print();
 
 
                              kx_vs_ky->Fill(X_Estimate(0,0), X_Estimate(1,0));
-
-
-
-                            x_pred.Print();*/
                            }
 
 
@@ -1154,22 +1124,22 @@ cout<<"+----------------+"<<endl;
 c2->cd(1);
         angle_vs_energy_pattern->SetMarkerStyle(15);
         angle_vs_energy_pattern->SetLineWidth(1);
-        angle_vs_energy_pattern->Draw();
+        angle_vs_energy_pattern->Draw();*/
 c2->cd(2);
-        Z_vs_Y->SetMarkerStyle(15);
-        Z_vs_Y->SetLineWidth(1);
-        Z_vs_Y->Draw();
-*/
+        X_vs_Y->SetMarkerStyle(20);
+        X_vs_Y->SetLineWidth(1);
+        X_vs_Y->Draw();
+
 c2->cd(3);
         phi_pattern->SetMarkerStyle(15);
         phi_pattern->SetLineWidth(1);
         phi_pattern->Draw();
-/*
+
 c2->cd(4);
         kx_vs_ky->SetMarkerStyle(20);
         kx_vs_ky->SetLineWidth(1);
         kx_vs_ky->Draw();
-*/
+
 
 
         return(0);
