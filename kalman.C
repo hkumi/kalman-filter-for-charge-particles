@@ -342,7 +342,7 @@ Int_t GetIndexOfMaxValue(std::vector<Double_t> values)
 AtTrack TrackSelector(std::vector<AtTrack> trackCandidates, std::vector<Double_t> thetaValues)
 {
     Int_t numberOfTracks = trackCandidates.size(); // Gets number of tracks
-    cout<<"Track candidates: "<<numberOfTracks<<endl;
+  //  cout<<"Track candidates: "<<numberOfTracks<<endl;
 
     //Discarding vectors with no tracks
     if ( numberOfTracks >= 1)
@@ -393,22 +393,22 @@ Double_t GetPhiAngle(AtTrack goodTrack)
 {
     AtHitCluster firstCluster, secondCluster;
     auto hitClusterArray = goodTrack.GetHitClusterArray();
-    
+
     firstCluster = hitClusterArray->at(1);
     secondCluster = hitClusterArray->at(2);
-    
+
     auto firstPosition = firstCluster.GetPosition();
     auto secondPosition = secondCluster.GetPosition();
     Double_t yValue = secondPosition.Y() - firstPosition.Y();
     Double_t xValue = secondPosition.X() - firstPosition.X();
-   
+
     Double_t phiAngleRad = TMath::ATan2(yValue,xValue);
     Double_t phiAngleDeg;
     if (phiAngleRad<0)
     {
         phiAngleDeg = 360 + phiAngleRad*TMath::RadToDeg();
         return phiAngleDeg;
-    } 
+    }
     else
     {
         phiAngleDeg = phiAngleRad*TMath::RadToDeg();
@@ -419,15 +419,15 @@ Double_t GetPhiAngle(AtTrack goodTrack)
 
 
 // Define a functions to calculate the process noise matrix Q .
-//this is a 6*6 matrice for my case. 
- 
+//this is a 6*6 matrice for my case.
+
 void generateGaussianNoise(TMatrixD &Q)
 {
     // Define the size of the matrix
     Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
     Int_t cols = 6; // the number of cols.
 
-    // Define the matrix to hold process noise. 
+    // Define the matrix to hold process noise.
     Q.ResizeTo(rows, cols);
     Q.Zero();
 
@@ -446,11 +446,11 @@ void generateMeasurementNoise(TMatrixD& R)
     R.ResizeTo(rows, cols);
     R.Zero();
 
-    R(0,0) = 10;
+    R(0,0) = 1;
 
-    R(1,1) = 10;
+    R(1,1) = 1;
 
-    R(2,2) = 10;
+    R(2,2) = 1;
 
 }
 
@@ -472,17 +472,17 @@ void Ini_P(TMatrixD &P){
 
         // Define the  matrixes to hold covariance matrix.
 
-        P(0,0) = 1;
+        P(0,0) = 10;
 
-        P(1,1) = 1;
+        P(1,1) = 10;
 
-        P(2,2) = 1;
+        P(2,2) = 10;
 
-        P(3,3) = 1;
+        P(3,3) = 10;
 
-        P(4,4) = 1;
+        P(4,4) = 10;
 
-        P(5,5) = 1;
+        P(5,5) = 10;
 
 
 
@@ -572,33 +572,43 @@ TMatrixD ExtrapolationToPlane(TMatrixD& initrack, Double_t x, Double_t y, Double
 {
     // Define the normal vector to the plane
     TVector3 n(nx, ny, nz);
-    
+
     // Define a point on the plane
     TVector3 P(x, y, z);
-    
+
     // Extract the initial position and momentum from the initial track state
     Double_t px = initrack(3, 0);
     Double_t py = initrack(4, 0);
     Double_t pz = initrack(5, 0);
     TVector3 pos(initrack(0, 0), initrack(1, 0), initrack(2, 0));
     TVector3 mom(px, py, pz);
-    
+
+    // Calculate the dot product of the momentum vector and the normal vector
+    Double_t dot_product = mom.Dot(n);
+
+    // Check if the dot product is zero (within some tolerance)
+    if (std::abs(dot_product) < 1e-9) {
+    //   std::cout<<"Momentum vector is perpendicular to the plane" << endl<<endl;
+    } else {
+      //std::cout << "Momentum vector is not perpendicular to the plane" << endl << endl;
+    }
+
     // Calculate the distance from the initial position to the plane
     Double_t d = (P - pos).Dot(n) / mom.Dot(n);
-    std::cout << d<<endl;
-    
+    std::cout << d<<endl << endl;
+
     // Calculate the position of the intersection between the track and the plane
     TVector3 pos_int = pos + d * mom;
-    
+
     // Create a new track state matrix with the extrapolated position and momentum
-    TMatrixD extrap_track(6, 1);
+    TMatrixD extrap_track(3, 1);
     extrap_track(0, 0) = pos_int.X();
     extrap_track(1, 0) = pos_int.Y();
     extrap_track(2, 0) = pos_int.Z();
-    extrap_track(3, 0) = px;
-    extrap_track(4, 0) = py;
-    extrap_track(5, 0) = pz;
-    
+   // extrap_track(3, 0) = px;
+    //extrap_track(4, 0) = py;
+    //extrap_track(5, 0) = pz;
+
     return extrap_track;
 }
 
@@ -606,7 +616,7 @@ TMatrixD ExtrapolationToPlane(TMatrixD& initrack, Double_t x, Double_t y, Double
 void statepred(TMatrixD &Initial_state,Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz){
 
 
- 
+
 
  // Define the initial conditions
          Initial_state(0,0) = x1;      // initial x position   unit in m.
@@ -614,7 +624,7 @@ void statepred(TMatrixD &Initial_state,Double_t x1, Double_t y1, Double_t z1, Do
          Initial_state(2,0) = z1;      // initial z position  unit in m
          Initial_state(3,0) = px;     // initial x momentum unit in kg m/s
          Initial_state(4,0) = py;     // initial y momentum  unit in kg m/s
-         Initial_state(5,0) = pz ;     // initial z momentum unit in kg m/s.
+         Initial_state(5,0) = pz;     // initial z momentum unit in kg m/s.
 
 }
 
@@ -644,7 +654,7 @@ void GetMeasurementMatrix(TMatrixD& H_k) {
 void kalman(){
 
          TH2F *rx_vs_ry = new TH2F("rx_vs_ry", "rungex_vs_rungey", 720, 0, -3, 1000, 0, 2.0);
-         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "kalmanx_vs_kalmany", 720, 0, -3, 1000, 0, 2.0);
+         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "filted states", 720, 0, -3, 1000, 0, 2.0);
 
          TH2F *vx_vs_vy = new TH2F("vx_vs_rvy", "rungevx_vs_rungevy", 720, 0, -3, 1000, 0, 2.0);
          TH2F *Intx_vs_Inty = new TH2F("Intx_vs_Inty", "Intersectionx_vs_Intersectiony", 720, 0, -3, 1000, 0, 2.0);
@@ -883,8 +893,8 @@ c1->cd(1);
         c2->Divide(2, 2);
         c2->Draw();
         TH2F *angle_vs_energy = new TH2F("angle_vs_energy", "angle_vs_energy", 720, 0, 179, 1000, 0, 100.0);
-        TH2F *X_vs_Y = new TH2F("X_vs_Y", "X_vs_Y", 720, 0, -3, 1000, 0, 2.0);
-        TH2F *energy_vs_Zorb = new TH2F("energy_vs_Zorb", "energy_vs_Zorb", 720, 0, -5, 100, 0, 5.0);
+        TH2F *X_vs_Y = new TH2F("X_vs_Y", "Simulated data", 720, 0, -3, 1000, 0, 2.0);
+        TH2F *predictedx_vs_predictedy = new TH2F("predictedx_vs_predictedyb", "predicted state", 720, 0, -3, 1000, 0, 2.0);
         TH1F *phi_pattern = new TH1F("phi_pattern", "phi_pattern", 1440, -50, 400);
         TH2F *angle_vs_energy_pattern =new TH2F("angle_vs_energy_pattern", "angle_vs_energy_pattern", 720, 0, 179, 1000, 0, 100.0);
 
@@ -933,7 +943,7 @@ cout<<"+----------------+"<<endl;
 
             ROOT::Math::XYZPoint iniPos;
             ROOT::Math::XYZPoint secPos;
-            
+
 
             /*----------
             Looping over all the events in
@@ -977,7 +987,7 @@ cout<<"+----------------+"<<endl;
 
                         // Selecting track to get phi angle
                         AtTrack goodTrack = TrackSelector(availableTracks, thetaValues);
-                        cout<<"ID: " << goodTrack.GetTrackID()<<endl;
+                       // cout<<"ID: " << goodTrack.GetTrackID()<<endl;
                         Double_t phi;
                         if (goodTrack.GetTrackID() != -1)
                         {
@@ -1000,7 +1010,7 @@ cout<<"+----------------+"<<endl;
                         Double_t iniPosY = firstPosition.Y();
                         Double_t iniPosZ = firstPosition.Z();
 
-                        std::cout << phi << endl;
+                        //std::cout << phi << endl;
 
                         auto iniPx = p * TMath::Cos(phi * TMath::DegToRad()) * TMath::Sin(theta);        // in MeV/c
                         auto iniPy = p * TMath::Sin(phi * TMath::DegToRad()) * sin(theta );              // in MeV/c
@@ -1014,13 +1024,16 @@ cout<<"+----------------+"<<endl;
                         initrack(3, 0) = iniPx;
                         initrack(4, 0) = iniPy;
                         initrack(5, 0) = iniPz;
-                        initrack.Print();
+                      //  initrack.Print();
+
 
                         TMatrixD Extrapolated_state(6,1);
-                        //statepred(Extrapolated_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
+                        statepred(Extrapolated_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
                         //Extrapolated_state.Print();
-                        Extrapolated_state = ExtrapolationToPlane(initrack,  iniPosX, iniPosY,  iniPosZ, iniPx,  iniPy, iniPz);
-                        Extrapolated_state.Print();
+                        //Extrapolated_state = ExtrapolationToPlane(initrack,  iniPosX, iniPosY,  iniPosZ, iniPx,  iniPy, iniPz);
+                        //Extrapolated_state.Print();
+                          //X_vs_Y->Fill(Extrapolated_state(0,0),Extrapolated_state(1,0));
+
 
                         /*----------
                         Looping over all the tracks in
@@ -1062,7 +1075,7 @@ cout<<"+----------------+"<<endl;
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
 
-                           std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
+                          // std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
 
 
                            for(auto iclus = 0; iclus < hitClusterArray->size()-1; ++iclus){
@@ -1072,9 +1085,9 @@ cout<<"+----------------+"<<endl;
                               Double_t x1 = measurements.X();
                               Double_t y1 = measurements.Y();
                               Double_t z1 = measurements.Z();
-                             // std::cout << x1<<","<<y1<< ","<< z1<<endl;
+                              std::cout << x1<<","<<y1<< ","<< z1<<endl;
 
-                              X_vs_Y->Fill(x1,y1);
+                            //  X_vs_Y->Fill(x1,y1);
 
  
                             //Perform Kalman here.
@@ -1082,6 +1095,8 @@ cout<<"+----------------+"<<endl;
 
 
                              x_pred = (F * Extrapolated_state) ;
+                             X_vs_Y->Fill(x_pred(0,0), x_pred(1,0));
+                           //  x_pred.Print();
 
                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
                              //updates
@@ -1094,18 +1109,24 @@ cout<<"+----------------+"<<endl;
                              Double_t Matrix_Y[3] = {xaxis[iclus],yaxis[iclus],zaxis[iclus]};
                              Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
 
+                            // Y_1 = ExtrapolationToPlane(initrack,  x1, y1,  z1, iniPx,  iniPy, iniPz);
+                             //Y_1.Print();
+
+
                              Z_1 = C_1* Y_1;
-                             X_Estimate = x_pred + (K *(Z_1-(H_1*x_pred)));
+                             // X_Estimate = x_pred + (K *(Z_1-(H_1*x_pred)))
+                             X_Estimate = x_pred + K *(Z_1-H_1*x_pred);
                              P =(I-K*H_1)*P_pred;
                              Extrapolated_state = X_Estimate;
 
-                             std::cout << "the predicted state:" <<std::endl;
-                             X_Estimate.Print(); 
-                             std::cout << "the predicted covariance:" <<std::endl; 
-                             K.Print();
-
+                             //std::cout << "the predicted state:" <<endl << endl;
+                              //x_pred.Print(); 
+                             //std::cout << "the Estimated State:" <<std::endl<<endl; 
+                             //X_Estimate.Print();
+                    
 
                              kx_vs_ky->Fill(X_Estimate(0,0), X_Estimate(1,0));
+
                            }
 
 
@@ -1126,19 +1147,45 @@ c2->cd(1);
         angle_vs_energy_pattern->SetLineWidth(1);
         angle_vs_energy_pattern->Draw();*/
 c2->cd(2);
-        X_vs_Y->SetMarkerStyle(20);
-        X_vs_Y->SetLineWidth(1);
-        X_vs_Y->Draw();
+        
+
+        rx_vs_ry->SetMarkerStyle(20);
+        rx_vs_ry->SetMarkerSize(0.3);
+
+        rx_vs_ry->SetMarkerColor(kRed);
+
+        kx_vs_ky->SetMarkerStyle(20);
+        kx_vs_ky->SetMarkerSize(0.3);
+        kx_vs_ky->SetMarkerColor(kBlack);
+        //kx_vs_ky->GetXaxis()->SetRangeUser(-200, 50);
+        //kx_vs_ky->GetYaxis()->SetRangeUser(0, 250);
+//        kx_vs_ky->Draw();
+
+
+        rx_vs_ry->Draw();
+
+
+
 
 c2->cd(3);
         phi_pattern->SetMarkerStyle(15);
-        phi_pattern->SetLineWidth(1);
+        phi_pattern->SetMarkerSize(0.3);
         phi_pattern->Draw();
 
 c2->cd(4);
+        X_vs_Y->SetMarkerStyle(21);
+        X_vs_Y->SetMarkerSize(0.3);
+        X_vs_Y->SetLineWidth(3);
+        X_vs_Y->SetLineColor(kBlack);
+        X_vs_Y->SetMarkerColor(kBlack);
+        X_vs_Y->Draw();
+
         kx_vs_ky->SetMarkerStyle(20);
-        kx_vs_ky->SetLineWidth(1);
-        kx_vs_ky->Draw();
+        kx_vs_ky->SetMarkerSize(0.3);
+        kx_vs_ky->SetMarkerColor(kRed);
+        //kx_vs_ky->GetXaxis()->SetRangeUser(-200, 50);
+        //kx_vs_ky->GetYaxis()->SetRangeUser(0, 250);
+        kx_vs_ky->Draw("SAME");
 
 
 
