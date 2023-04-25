@@ -555,12 +555,12 @@ Double_t  GetVirtualPlane( Double_t px, Double_t py, Double_t pz, Double_t x, Do
 
 void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz, Double_t& xi,Double_t& yi,Double_t& zi) {
      Double_t d = GetVirtualPlane(px,py,pz,x1,y1,z1);
-   //  std::cout<<d<<endl<<endl;
+     std::cout<<d<<endl<<endl;
      Double_t dx = px;
      Double_t dy = py;
      Double_t dz = pz;
      Double_t t = d - (px*x1 + py*y1 + pz*z1)  / (px*dx + py*dy + pz*dz);                       // calculate the intersection
-   //  std::cout<<"the value of t: " << t<<endl<<endl;
+     std::cout<<"the value of t: " << t<<endl<<endl;
      xi = x1+t*dx;
      yi = y1+t*dy;
      zi = z1+t*dz;
@@ -1106,7 +1106,7 @@ cout<<"+----------------+"<<endl;
                             //Initial state predictions for protons.
                             std::cout <<" distance ::" << distance << endl<<endl;
 
-                             if (distance < 50){ 
+                             if (distance < 10e6){ 
                              x_pred = F * Extrapolated_state ;
                              //X_vs_Y->Fill(x_pred(0,0), x_pred(1,0));
                              std::cout<< "the predicted state :" << endl<<endl;
