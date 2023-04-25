@@ -568,49 +568,47 @@ void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Do
 
 }
 
-TMatrixD ExtrapolationToPlane(TMatrixD& initrack, Double_t x, Double_t y, Double_t z, Double_t nx, Double_t ny, Double_t nz)
-{
-    // Define the normal vector to the plane
-    TVector3 n(nx, ny, nz);
+// This function calculates the virtual detector plane for a given track extrapolation to a hit
+// It takes as input the hit cluster and the predicted coordinates of the track at that location
+// It returns a TVector3 object representing the normal vector of the virtual detector plane
+TVector3 calculateVirtualDetectorPlane(AtHitCluster *hitCluster, Double_t predictedX, Double_t predictedY, Double_t predictedZ) {
+  // Get the hit cluster position
+  auto measurements = hitCluster->GetPosition();
+  Double_t x1 = measurements.X();
+  Double_t y1 = measurements.Y();
+  Double_t z1 = measurements.Z();
 
-    // Define a point on the plane
-    TVector3 P(x, y, z);
+  // Calculate the direction vector from the predicted track position to the hit position
+  Double_t dx = x1 - predictedX;
+  Double_t dy = y1 - predictedY;
+  Double_t dz = z1 - predictedZ;
 
-    // Extract the initial position and momentum from the initial track state
-    Double_t px = initrack(3, 0);
-    Double_t py = initrack(4, 0);
-    Double_t pz = initrack(5, 0);
-    TVector3 pos(initrack(0, 0), initrack(1, 0), initrack(2, 0));
-    TVector3 mom(px, py, pz);
+  // Calculate the magnitude of the direction vector
+  Double_t mag = std::sqrt(dx*dx + dy*dy + dz*dz);
 
-    // Calculate the dot product of the momentum vector and the normal vector
-    Double_t dot_product = mom.Dot(n);
+  // Normalize the direction vector
+  TVector3 dir(dx/mag, dy/mag, dz/mag);
 
-    // Check if the dot product is zero (within some tolerance)
-    if (std::abs(dot_product) < 1e-9) {
-    //   std::cout<<"Momentum vector is perpendicular to the plane" << endl<<endl;
-    } else {
-      //std::cout << "Momentum vector is not perpendicular to the plane" << endl << endl;
-    }
+  // Define a point on the plane (the hit position)
+  TVector3 point(x1, y1, z1);
 
-    // Calculate the distance from the initial position to the plane
-    Double_t d = (P - pos).Dot(n) / mom.Dot(n);
-    std::cout << d<<endl << endl;
+  // Define a vector perpendicular to the plane by taking the cross product of the direction vector and the z-axis
+  TVector3 perp = dir.Cross(TVector3(0, 0, 1));
 
-    // Calculate the position of the intersection between the track and the plane
-    TVector3 pos_int = pos + d * mom;
+  // If the cross product is zero, the direction vector is parallel to the z-axis, so we take the cross product with the x-axis instead
+  if (perp.Mag() == 0) {
+    perp = dir.Cross(TVector3(1, 0, 0));
+  }
 
-    // Create a new track state matrix with the extrapolated position and momentum
-    TMatrixD extrap_track(3, 1);
-    extrap_track(0, 0) = pos_int.X();
-    extrap_track(1, 0) = pos_int.Y();
-    extrap_track(2, 0) = pos_int.Z();
-   // extrap_track(3, 0) = px;
-    //extrap_track(4, 0) = py;
-    //extrap_track(5, 0) = pz;
+  // Normalize the perpendicular vector
+  perp = perp.Unit();
 
-    return extrap_track;
+  // Take the cross product of the direction vector and the perpendicular vector to get the normal vector of the plane
+  TVector3 normal = dir.Cross(perp);
+
+  return normal;
 }
+
 
 //define the predicted state.
 void statepred(TMatrixD &Initial_state,Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz){
