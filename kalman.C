@@ -438,9 +438,9 @@ void generateMeasurementNoise(TMatrixD& R)
     R.ResizeTo(rows, cols);
     R.Zero();
 
-    R(0,0) = 1.725;
+    R(0,0) = 100;
 
-    R(1,1) = 5.045;
+    R(1,1) = 100;
 
     //R(2,2) = 1;
 
@@ -464,17 +464,17 @@ void Ini_P(TMatrixD &P){
 
         // Define the  matrixes to hold covariance matrix.
 
-        P(0,0) = 0.06592;
+        P(0,0) = 10;
 
-        P(1,1) = 0.06592;
+        P(1,1) = 10;
 
-        P(2,2) = 0.04299;
+        P(2,2) = 10;
 
-        P(3,3) = 0.05299;
+        P(3,3) = 10;
 
-        P(4,4) = 0.05299;
+        P(4,4) = 10;
 
-        P(5,5) = 0.03299;
+        P(5,5) = 10;
 
 
 
@@ -806,9 +806,9 @@ cout<<"+----------------+"<<endl;
             state_matrix(0,j) = x[j];
             state_matrix(1,j) = y[j];
             state_matrix(2,j) = z[j];
-            state_matrix(3,j) = vx[j]*m;
-            state_matrix(4,j) = vy[j]*m;
-            state_matrix(5,j) = vz[j]*m;
+            state_matrix(3,j) = vx[j];
+            state_matrix(4,j) = vy[j];
+            state_matrix(5,j) = vz[j];
         }
 
 
@@ -1038,7 +1038,7 @@ cout<<"+----------------+"<<endl;
                         TMatrixD Y_1(2,1); //Observation matrix
                         TMatrixD C_1(2,2);
                         TMatrixD Z_1(2,1);
-                        TMatrixD X_Estimate(6,1);
+                        TMatrixD x_estimate(6,1);
 
 
                         TMatrixD Q(6,6);
@@ -1059,20 +1059,14 @@ cout<<"+----------------+"<<endl;
                         generateMeasurementNoise(R_1);
                         //R_1.Print();
 
-                        Double_t Matrix_C[4] =  {1,0,0,1};
-                        C_1.Use(C_1.GetNrows(), C_1.GetNcols(), Matrix_C);
-
-
-                        Double_t xaxis[hitClusterArray->size()],yaxis[hitClusterArray->size()],zaxis[hitClusterArray->size()];
-
-                        std::vector<int> eventNumbers = {1};
+                        std::vector<int> eventNumbers = {35};
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
 
                           // std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
                            TMatrixD initial_state(6,1);
                            statepred(initial_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
-                           //initial_state.Print();
+                           initial_state.Print();
                         //   covMatrix.Print();
 
 
@@ -1086,13 +1080,13 @@ cout<<"+----------------+"<<endl;
                               auto measurements = MeasurementCluster.GetPosition();
                               Double_t x1 = measurements.X();
                               Double_t y1 = measurements.Y();
-                              //std::cout << x1<<","<<y1<<endl << endl;
+                              std::cout << x1<<","<<y1<<endl << endl;
                               Double_t distance = std::sqrt((x1 - xi)*(x1 - xi) + (y1 - yi)*(y1 - yi)) ;
 
 
                               X_vs_Y->Fill(x1,y1);
 
- 
+
                             //Perform Kalman here.
                             //Initial state predictions for protons.
                             //std::cout <<" distance ::" << distance << endl<<endl;
@@ -1103,38 +1097,33 @@ cout<<"+----------------+"<<endl;
                              //std::cout<< "the predicted state :" << endl<<endl;
                              //x_pred.Print();
                               P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
- 
+
                              //TMatrixD covMatrix = MeasurementCluster.GetCovMatrix();
                             // covMatrix.Print();
 
                              //updates
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
-                             //std::cout<< "the KALMAN GAIN :" << endl<<endl;
-                             //K.Print();
+                             std::cout<< "the KALMAN GAIN :" << endl<<endl;
+                             K.Print();
 
 
                              Y_1(0,0) = x1;
                              Y_1(1,0) = y1;
 
-                            std::cout << "this is the measure:" << endl << endl;
-                             Y_1.Print();
+                           // std::cout << "this is the measure:" << endl << endl;
+                            // Y_1.Print();
+                             // Predicted measurement
+                             TMatrixD predictedMeasurement = (H_1 * x_pred);
 
-
-                            // Z_1 = C_1* Y_1;
-                             // X_Estimate = x_pred + (K *(Z_1-(H_1*x_pred)))
-                             initial_state = x_pred + K *(Y_1 -H_1*x_pred);
-                             std::cout << "the estimated state : " << endl << endl;
-                             initial_state.Print();
-                             P =(I - K*H_1)*P_pred;
-                             //initial_state = X_Estimate;
-
-                            // std::cout << "the propagator matrice:" <<endl << endl;
-                             //P.Print(); 
-                             //std::cout << "the Estimated State:" <<std::endl<<endl; 
-                             //X_Estimate.Print();
-                    
-
-                             kx_vs_ky->Fill(initial_state(0,0), initial_state(1,0));
+                             // Residual between predicted and actual measurement
+                             TMatrixD residual = (Y_1 - predictedMeasurement);
+                             x_estimate = x_pred + K * residual;
+                             P =(I-K*H_1)*P_pred;
+                             TMatrixD output = H_1 * x_estimate;
+                             initial_state = x_estimate; 
+                             output.Print();
+                             //Z.Print();
+                             kx_vs_ky->Fill(output(0,0), output(1,0));
 
                            //}
                            }
