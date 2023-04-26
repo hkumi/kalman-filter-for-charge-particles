@@ -30,25 +30,17 @@ using namespace std;
 void Get_Energy(Double_t M,Double_t IZ,Double_t BRHO,Double_t &E);
 
 
-std::vector<AtHitCluster> fHitClusterArray; //< Clusterized hits container
+std::vector<AtHitCluster> HitClusterArray; //< Clusterized hits container
 
 std::vector<AtHitCluster> *GetHitClusterArray() {
 
 
-         return &fHitClusterArray;
+         return &HitClusterArray;
 
 
  }
 
 
-std::vector<AtHit> fHitArray;
-std::vector<AtHit> *GetHitArray() {
-
-
-         return &fHitArray;
-
-
- }
 
 
 
@@ -555,12 +547,12 @@ Double_t  GetVirtualPlane( Double_t px, Double_t py, Double_t pz, Double_t x, Do
 
 void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Double_t pz, Double_t& xi,Double_t& yi,Double_t& zi) {
      Double_t d = GetVirtualPlane(px,py,pz,x1,y1,z1);
-     std::cout<<d<<endl<<endl;
+  //   std::cout<<d<<endl<<endl;
      Double_t dx = px;
      Double_t dy = py;
      Double_t dz = pz;
      Double_t t = d - (px*x1 + py*y1 + pz*z1)  / (px*dx + py*dy + pz*dz);                       // calculate the intersection
-     std::cout<<"the value of t: " << t<<endl<<endl;
+//     std::cout<<"the value of t: " << t<<endl<<endl;
      xi = x1+t*dx;
      yi = y1+t*dy;
      zi = z1+t*dz;
@@ -652,7 +644,7 @@ void GetMeasurementMatrix(TMatrixD& H_k) {
 void kalman(){
 
          TH2F *rx_vs_ry = new TH2F("rx_vs_ry", "rungex_vs_rungey", 720, 0, -3, 1000, 0, 2.0);
-         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "filted states", 720, 0, -3, 1000, 0, 2.0);
+         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "fitted states", 720, 0, -3, 1000, 0, 2.0);
 
          TH2F *vx_vs_vy = new TH2F("vx_vs_rvy", "rungevx_vs_rungevy", 720, 0, -3, 1000, 0, 2.0);
          TH2F *Intx_vs_Inty = new TH2F("Intx_vs_Inty", "Intersectionx_vs_Intersectiony", 720, 0, -3, 1000, 0, 2.0);
@@ -892,7 +884,7 @@ c1->cd(1);
         c2->Draw();
         TH2F *angle_vs_energy = new TH2F("angle_vs_energy", "angle_vs_energy", 720, 0, 179, 1000, 0, 100.0);
         TH2F *X_vs_Y = new TH2F("X_vs_Y", "Simulated data", 720, 0, -3, 1000, 0, 2.0);
-        TH2F *predictedx_vs_predictedy = new TH2F("predictedx_vs_predictedyb", "predicted state", 720, 0, -3, 1000, 0, 2.0);
+        TH2F *predictedx_vs_predictedy = new TH2F("predictedx_vs_predictedy", "predicted state", 720, 0, -3, 1000, 0, 2.0);
         TH1F *phi_pattern = new TH1F("phi_pattern", "phi_pattern", 1440, -50, 400);
         TH2F *angle_vs_energy_pattern =new TH2F("angle_vs_energy_pattern", "angle_vs_energy_pattern", 720, 0, 179, 1000, 0, 100.0);
 
@@ -995,11 +987,12 @@ cout<<"+----------------+"<<endl;
 
                         }
 
-                        AtHitCluster firstCluster, secondCluster;
-                        auto hitClusterArray = track.GetHitClusterArray();
 
-                        firstCluster = hitClusterArray->at(0);
-                        secondCluster = hitClusterArray->at(1);
+                        auto hitClusterArray = track.GetHitClusterArray();
+                        AtHitCluster firstCluster, secondCluster;
+
+                        firstCluster = hitClusterArray->at(1);
+                        secondCluster = hitClusterArray->at(2);
 
                         auto firstPosition = firstCluster.GetPosition();
                         auto secondPosition = secondCluster.GetPosition();
@@ -1008,7 +1001,7 @@ cout<<"+----------------+"<<endl;
                         Double_t iniPosY = firstPosition.Y();
                         Double_t iniPosZ = firstPosition.Z();
 
-                        //TMatrixD covMatrix = firstCluster.GetCovMatrix();
+                        //std::cout << iniPosX << iniPosY << iniPosY << endl << endl;
 
                 //        covMatrix.Print();
 
@@ -1024,7 +1017,7 @@ cout<<"+----------------+"<<endl;
                         initrack(3, 0) = iniPx;
                         initrack(4, 0) = iniPy;
                         initrack(5, 0) = iniPz;
-                      //  initrack.Print();
+                     //   initrack.Print();
 
 
                        // TMatrixD Extrapolated_state(6,1);
@@ -1072,24 +1065,24 @@ cout<<"+----------------+"<<endl;
 
                         Double_t xaxis[hitClusterArray->size()],yaxis[hitClusterArray->size()],zaxis[hitClusterArray->size()];
 
-                        std::vector<int> eventNumbers = {507};
+                        std::vector<int> eventNumbers = {1};
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
 
                           // std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
-                           TMatrixD Extrapolated_state(6,1);
-                           statepred(Extrapolated_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
-                           //Extrapolated_state.Print();
+                           TMatrixD initial_state(6,1);
+                           statepred(initial_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
+                           //initial_state.Print();
                         //   covMatrix.Print();
 
 
-                           for(auto iclus = 0; iclus < hitClusterArray->size()-1; ++iclus){
+                           for(auto iclus = 0; iclus < hitClusterArray->size(); ++iclus){
 
                              Double_t xi,yi,zi=0.0;
                              GetPOCA( iniPosX, iniPosY, iniPosZ, iniPx, iniPy, iniPz,  xi, yi, zi);
 
                             //  Get the measurements.
-                              auto MeasurementCluster = hitClusterArray->at(iclus+1);
+                              auto MeasurementCluster = hitClusterArray->at(iclus);
                               auto measurements = MeasurementCluster.GetPosition();
                               Double_t x1 = measurements.X();
                               Double_t y1 = measurements.Y();
@@ -1102,51 +1095,48 @@ cout<<"+----------------+"<<endl;
  
                             //Perform Kalman here.
                             //Initial state predictions for protons.
-                            std::cout <<" distance ::" << distance << endl<<endl;
+                            //std::cout <<" distance ::" << distance << endl<<endl;
 
-                             if (distance < 10e6){ 
-                             x_pred = F * Extrapolated_state ;
+                             //if (distance < 10e6){ 
+                             x_pred = F * initial_state ;
                              //X_vs_Y->Fill(x_pred(0,0), x_pred(1,0));
-                             std::cout<< "the predicted state :" << endl<<endl;
-                             x_pred.Print();
+                             //std::cout<< "the predicted state :" << endl<<endl;
+                             //x_pred.Print();
                               P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
  
-                             TMatrixD covMatrix = MeasurementCluster.GetCovMatrix();
+                             //TMatrixD covMatrix = MeasurementCluster.GetCovMatrix();
                             // covMatrix.Print();
 
                              //updates
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
-                             std::cout<< "the KALMAN GAIN :" << endl<<endl;
-                             K.Print();
+                             //std::cout<< "the KALMAN GAIN :" << endl<<endl;
+                             //K.Print();
 
 
-                             xaxis[iclus] = x1;
-                             yaxis[iclus] = y1;
-                            // std::cout << "x:" <<xaxis[iclus] <<"y:" << yaxis[iclus] << endl << endl;
-                             Double_t Matrix_Y[2] = {xaxis[iclus],yaxis[iclus]};
-                             Y_1.Use(Y_1.GetNrows(), Y_1.GetNcols(), Matrix_Y);
+                             Y_1(0,0) = x1;
+                             Y_1(1,0) = y1;
 
-                            //std::cout << "this is the measure:" << endl << endl;
-                             //Y_1.Print();
+                            std::cout << "this is the measure:" << endl << endl;
+                             Y_1.Print();
 
 
                             // Z_1 = C_1* Y_1;
                              // X_Estimate = x_pred + (K *(Z_1-(H_1*x_pred)))
-                             X_Estimate = x_pred + (K *(Y_1 -(H_1*x_pred)));
+                             initial_state = x_pred + K *(Y_1 -H_1*x_pred);
                              std::cout << "the estimated state : " << endl << endl;
-                             X_Estimate.Print();
+                             initial_state.Print();
                              P =(I - K*H_1)*P_pred;
-                             Extrapolated_state = X_Estimate;
+                             //initial_state = X_Estimate;
 
-                             std::cout << "the propagator matrice:" <<endl << endl;
-                             P.Print(); 
+                            // std::cout << "the propagator matrice:" <<endl << endl;
+                             //P.Print(); 
                              //std::cout << "the Estimated State:" <<std::endl<<endl; 
                              //X_Estimate.Print();
                     
 
-                             kx_vs_ky->Fill(X_Estimate(0,0), X_Estimate(1,0));
+                             kx_vs_ky->Fill(initial_state(0,0), initial_state(1,0));
 
-                           }
+                           //}
                            }
 
 
