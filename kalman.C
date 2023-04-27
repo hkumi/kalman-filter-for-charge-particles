@@ -30,12 +30,12 @@ using namespace std;
 void Get_Energy(Double_t M,Double_t IZ,Double_t BRHO,Double_t &E);
 
 
-std::vector<AtHitCluster> HitClusterArray; //< Clusterized hits container
+std::vector<AtHitCluster> fHitClusterArray; //< Clusterized hits container
 
 std::vector<AtHitCluster> *GetHitClusterArray() {
 
 
-         return &HitClusterArray;
+         return &fHitClusterArray;
 
 
  }
@@ -260,7 +260,7 @@ void Jacobi_matrice(TMatrixD &Jacobi_matrix){
  // Define the size of the matrix
         Int_t rows = 6; // the number of rows. In my case I have a 6*6 matrices for the state vectors
         Int_t cols = 6; // the number of cols.
-        Double_t h = 7.49 *TMath::Power(10,-10) ; //in seconds.
+        Double_t h = TMath::Power(10,-10) ; //in seconds.
 
         // Define the jacobi matrix to hold state vectors
         Double_t Ex,Ey,Ez,f1;                   //Electric field in V/m. 
@@ -268,7 +268,7 @@ void Jacobi_matrice(TMatrixD &Jacobi_matrix){
         Double_t rr,az,po;
         Double_t q = 1.6022*TMath::Power(10,-19);       //charge of the particle(proton) in (C)
         Double_t m = 1.6726*TMath::Power(10,-27);       // mass of the particle in kg
-        Double_t B=3.0;                 // Applied magnetic field (T).
+        Double_t B=-3.0;                 // Applied magnetic field (T).
         Double_t E=TMath::Cos((q*B)/m) * 500;   // Applied Electric field(V/m).
         Bx = 0;
         By = 0;                 // magnetic field in x and y  direction in Tesla.
@@ -283,7 +283,7 @@ void Jacobi_matrice(TMatrixD &Jacobi_matrix){
 
         Jacobi_matrix(0,3) = 1*h;
 
-        Jacobi_matrix[1][4] = 1*h;
+        Jacobi_matrix(1,4) = 1*h;
 
         Jacobi_matrix(2,5) = 1*h;
 
@@ -438,9 +438,9 @@ void generateMeasurementNoise(TMatrixD& R)
     R.ResizeTo(rows, cols);
     R.Zero();
 
-    R(0,0) = 100;
+    R(0,0) = 10;
 
-    R(1,1) = 100;
+    R(1,1) = 10;
 
     //R(2,2) = 1;
 
@@ -640,9 +640,9 @@ void kalman(){
         Double_t k1vz[n],k2vz[n],k3vz[n],k4vz[n];
 
        // Define the initial conditions
-         x[0] = 0.0;      // initial x position   unit in m.
-         y[0] = 0.0;      // initial y position  unit in m
-         z[0] = 0.0;      // initial z position  unit in m
+         x[0] = 0;      // initial x position   unit in m.
+         y[0] = 0;      // initial y position  unit in m
+         z[0] = 0;      // initial z position  unit in m
          vx[0] = 10e6;     // initial x velocity unit in m/s
          vy[0] = 10e6;     // initial y velocity unit in m/s
          vz[0] = 10e6;     // initial z velocity unit in m/s.
@@ -651,8 +651,7 @@ void kalman(){
         // Define the time step 
 
         Double_t h = TMath::Power(10,-10) ; //in seconds.
-	//double tf=8.18*TMath::Power(10,-7);
-	//double t0=0.0;
+
 
 
 	//Graph to evaluate Energy loss
@@ -743,9 +742,9 @@ cout<<"+----------------+"<<endl;
 
           t[i] = t[i+1];
 
-        // std::cout<<x[i+1]<<" "<<y[i+1]<<" "<<vz[i+1]<<endl;
+ //        std::cout<<vx[i]<<" "<<vy[i]<<" "<<vz[i]<<endl;
 
-        rx_vs_ry->Fill(x[i],y[i]);
+        rx_vs_ry->Fill(vx[i],vy[i]);
         R_projection->Fill(x[i],y[i],z[i]);
 
         Energy = GetEnergy(vx[i],vy[i],vz[i]);
@@ -812,9 +811,9 @@ cout<<"+----------------+"<<endl;
 
     // Multiply propagator matrix with state vector to get time derivative of state vector
             TMatrixD state_dot_vector = F * state_vector;
-            propagatorx_vs_propagatory->Fill(state_dot_vector(0,0), state_dot_vector(1,0));
+            propagatorx_vs_propagatory->Fill(state_dot_vector(3,0), state_dot_vector(4,0));
             F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
-          // state_vector.Print();
+           // state_dot_vector.Print();
         }
 
 /*
@@ -834,10 +833,10 @@ c1->cd(1);
         F_projection->Draw();
         F_projection->SetMarkerStyle(21);
         F_projection->SetMarkerSize(0.3);
+
+
 */
 
-
-// Needs rethink!!!!
 
         TCanvas *c2 = new TCanvas();
         c2->Divide(2, 2);
@@ -919,7 +918,7 @@ cout<<"+----------------+"<<endl;
 
                         Double_t theta = track.GetGeoTheta();
                         Double_t rad   = track.GetGeoRadius();
-                        Double_t B_f = 3.0;                         //in Tesla.
+                        Double_t B_f = -3.0;                         //in Tesla.
                         Double_t brho = B_f * rad / TMath::Sin(theta) / 1000.0;     //in Tm.
                         Double_t ener = 0;
                         Double_t Am = 1.007; // atomic mass of proton in u.
@@ -946,6 +945,9 @@ cout<<"+----------------+"<<endl;
 
 
                         auto hitClusterArray = track.GetHitClusterArray();
+                         // Needs to be reversed back for multifit
+                        std::reverse(hitClusterArray->begin(), hitClusterArray->end());
+ 
                         AtHitCluster firstCluster, secondCluster;
 
                         firstCluster = hitClusterArray->at(1);
@@ -1009,11 +1011,14 @@ cout<<"+----------------+"<<endl;
                         std::vector<int> eventNumbers = {99};
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
+                           // cout<<"ID: " << goodTrack.GetTrackID()<<endl;
+                            if (goodTrack.GetTrackID() != -1){
+
 
                           // std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
                            TMatrixD initial_state(6,1);
                            statepred(initial_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
-                           initial_state.Print();
+                       //    initial_state.Print();
                         //   covMatrix.Print();
 
 
@@ -1024,7 +1029,7 @@ cout<<"+----------------+"<<endl;
                               auto measurements = MeasurementCluster.GetPosition();
                               Double_t x1 = measurements.X();
                               Double_t y1 = measurements.Y();
-                              //std::cout << x1<<","<<y1<<endl << endl;
+                              std::cout << x1<<","<<y1<<endl << endl;
 
                               X_vs_Y->Fill(x1,y1);
 
@@ -1046,13 +1051,15 @@ cout<<"+----------------+"<<endl;
                              // Residual between predicted and actual measurement
                              TMatrixD residual = (Y_1 - predictedMeasurement);
                              x_estimate = x_pred + K * residual;
+                            // std::cout << "the estimated state:" << endl << endl;
+                             //x_estimate.Print();
                              P =(I-K*H_1)*P_pred;
                              TMatrixD output = H_1 * x_estimate;              // this projects the estimated state into the output.
                              initial_state = x_estimate;
+                             //std::cout << "estimated state:" << endl << endl;
                              //output.Print();
-
                              kx_vs_ky->Fill(output(0,0), output(1,0));
-
+                           }
 
                            }
 
