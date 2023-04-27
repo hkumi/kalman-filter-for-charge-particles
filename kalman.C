@@ -560,46 +560,6 @@ void GetPOCA(Double_t x1, Double_t y1, Double_t z1, Double_t px, Double_t py, Do
 
 }
 
-// This function calculates the virtual detector plane for a given track extrapolation to a hit
-// It takes as input the hit cluster and the predicted coordinates of the track at that location
-// It returns a TVector3 object representing the normal vector of the virtual detector plane
-TVector3 calculateVirtualDetectorPlane(AtHitCluster *hitCluster, Double_t predictedX, Double_t predictedY, Double_t predictedZ) {
-  // Get the hit cluster position
-  auto measurements = hitCluster->GetPosition();
-  Double_t x1 = measurements.X();
-  Double_t y1 = measurements.Y();
-  Double_t z1 = measurements.Z();
-
-  // Calculate the direction vector from the predicted track position to the hit position
-  Double_t dx = x1 - predictedX;
-  Double_t dy = y1 - predictedY;
-  Double_t dz = z1 - predictedZ;
-
-  // Calculate the magnitude of the direction vector
-  Double_t mag = std::sqrt(dx*dx + dy*dy + dz*dz);
-
-  // Normalize the direction vector
-  TVector3 dir(dx/mag, dy/mag, dz/mag);
-
-  // Define a point on the plane (the hit position)
-  TVector3 point(x1, y1, z1);
-
-  // Define a vector perpendicular to the plane by taking the cross product of the direction vector and the z-axis
-  TVector3 perp = dir.Cross(TVector3(0, 0, 1));
-
-  // If the cross product is zero, the direction vector is parallel to the z-axis, so we take the cross product with the x-axis instead
-  if (perp.Mag() == 0) {
-    perp = dir.Cross(TVector3(1, 0, 0));
-  }
-
-  // Normalize the perpendicular vector
-  perp = perp.Unit();
-
-  // Take the cross product of the direction vector and the perpendicular vector to get the normal vector of the plane
-  TVector3 normal = dir.Cross(perp);
-
-  return normal;
-}
 
 
 //define the predicted state.
@@ -1020,13 +980,6 @@ cout<<"+----------------+"<<endl;
                      //   initrack.Print();
 
 
-                       // TMatrixD Extrapolated_state(6,1);
-                       // statepred(Extrapolated_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
-                        //Extrapolated_state.Print();
-                        //Extrapolated_state = ExtrapolationToPlane(initrack,  iniPosX, iniPosY,  iniPosZ, iniPx,  iniPy, iniPz);
-                        //Extrapolated_state.Print();
-                          //X_vs_Y->Fill(Extrapolated_state(0,0),Extrapolated_state(1,0));
-
 
                         /*----------
                         Looping over all the tracks in
@@ -1059,7 +1012,7 @@ cout<<"+----------------+"<<endl;
                         generateMeasurementNoise(R_1);
                         //R_1.Print();
 
-                        std::vector<int> eventNumbers = {35};
+                        std::vector<int> eventNumbers = {395};
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
 
@@ -1093,25 +1046,14 @@ cout<<"+----------------+"<<endl;
 
                              //if (distance < 10e6){ 
                              x_pred = F * initial_state ;
-                             //X_vs_Y->Fill(x_pred(0,0), x_pred(1,0));
-                             //std::cout<< "the predicted state :" << endl<<endl;
-                             //x_pred.Print();
-                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
+                             P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
 
-                             //TMatrixD covMatrix = MeasurementCluster.GetCovMatrix();
-                            // covMatrix.Print();
-
-                             //updates
+                             //this updates the  predicted states and the covariances.
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
-                             std::cout<< "the KALMAN GAIN :" << endl<<endl;
-                             K.Print();
-
-
+                             //Extract the measurements into a TMatrixD. 
                              Y_1(0,0) = x1;
                              Y_1(1,0) = y1;
 
-                           // std::cout << "this is the measure:" << endl << endl;
-                            // Y_1.Print();
                              // Predicted measurement
                              TMatrixD predictedMeasurement = (H_1 * x_pred);
 
@@ -1119,13 +1061,13 @@ cout<<"+----------------+"<<endl;
                              TMatrixD residual = (Y_1 - predictedMeasurement);
                              x_estimate = x_pred + K * residual;
                              P =(I-K*H_1)*P_pred;
-                             TMatrixD output = H_1 * x_estimate;
-                             initial_state = x_estimate; 
+                             TMatrixD output = H_1 * x_estimate;              // this projects the estimated state into the output.
+                             initial_state = x_estimate;
                              output.Print();
-                             //Z.Print();
+
                              kx_vs_ky->Fill(output(0,0), output(1,0));
 
-                           //}
+
                            }
 
 
