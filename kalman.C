@@ -141,7 +141,7 @@ Double_t  dxdt(double t,double vx, double vy, Double_t vz){
 	Double_t rr,az,po;
 	Double_t q = 1.6022*TMath::Power(10,-19); 	//charge of the particle(proton) in (C)
 	Double_t m = 1.6726*TMath::Power(10,-27); 	// mass of the particle in kg
-	Double_t B=3.0;                 // Applied magnetic field (T).
+	Double_t B= -3.0;                 // Applied magnetic field (T).
         Double_t E=TMath::Cos((q*B)/m) * 500;   // Applied Electric field(V/m).
         Bx = 0;
 	By = 0;                	// magnetic field in x and y  direction in Tesla.
@@ -171,7 +171,7 @@ Double_t Energy = GetEnergy(vx, vy, vz);
 	Double_t Ex,Ey,Ez,f2;              //Electric field in V/m. 
         Double_t Bx,By,Bz;              // magnetic field in Tesla
         Double_t q = 1.6022*TMath::Power(10,-19);   //charge of the particle in C
-        Double_t B=3.0;                 // Applied magnetic field.
+        Double_t B= -3.0;                 // Applied magnetic field.
         Double_t rr,az,po;
         Double_t m = 1.6726*TMath::Power(10,-27);  // mass of the particle in kg
 	Double_t E = TMath::Cos((q*B)/m) * 500 ;
@@ -202,7 +202,7 @@ Double_t Energy = GetEnergy(vx, vy, vz);
         Double_t Ex,Ey,Ez,f3;              //Electric field in V/m. 
         Double_t Bx,By,Bz;              // magnetic field in Tesla
         Double_t q = 1.6022*pow(10,-19);   //charge of the particle in eV
-        Double_t B=3.0;                 // Applied magnetic field.
+        Double_t B= -3.0;                 // Applied magnetic field.
         Double_t rr,az,po;
         Double_t m = 1.6726*TMath::Power(10,-27);  // mass of the particle in kg
 	Double_t E = TMath::Cos((q*B)/m) * 500 ; 
@@ -438,9 +438,9 @@ void generateMeasurementNoise(TMatrixD& R)
     R.ResizeTo(rows, cols);
     R.Zero();
 
-    R(0,0) = 100;
+    R(0,0) = 10;
 
-    R(1,1) = 100;
+    R(1,1) = 10;
 
     //R(2,2) = 1;
 
@@ -922,14 +922,11 @@ cout<<"+----------------+"<<endl;
                         Double_t B_f = 3.0;                         //in Tesla.
                         Double_t brho = B_f * rad / TMath::Sin(theta) / 1000.0;     //in Tm.
                         Double_t ener = 0;
-                        Double_t Am = 1.007; // atomic mass of proton in u. 
+                        Double_t Am = 1.007; // atomic mass of proton in u.
                         Double_t Z = 1.0;
                         Get_Energy(Am, Z, brho, ener);
                         angle_vs_energy_pattern->Fill(theta* TMath::RadToDeg() , ener);
                         Double_t p = brho * Z * 2.99792458*100.0;      //Magnitude of the momentum In MeV/c.
-                       // std::cout << "This particle has:";
-                       // std:: cout << "Ener:"<<ener<<" Momentum:" << p << " and"   <<  " Magnetic Rigidity: " << brho <<  endl;
-                       // std::cout<<endl;
 
                         // Vectors for selecting the right track
                         availableTracks.push_back(track);
@@ -961,14 +958,11 @@ cout<<"+----------------+"<<endl;
                         Double_t iniPosY = firstPosition.Y();
                         Double_t iniPosZ = firstPosition.Z();
 
-                        //std::cout << iniPosX << iniPosY << iniPosY << endl << endl;
-
-                //        covMatrix.Print();
 
                         auto iniPx = p * TMath::Cos(phi * TMath::DegToRad()) * TMath::Sin(theta);        // in MeV/c
-                        auto iniPy = p * TMath::Sin(phi * TMath::DegToRad()) * sin(theta );              // in MeV/c
+                        auto iniPy = p * TMath::Sin(phi * TMath::DegToRad()) * sin(theta);              // in MeV/c
                         auto iniPz = p * TMath::Cos(theta);                                              // in MeV/c
-                        //std::cout<< "px:" <<iniPx << "py:" << iniPy << "pz:" << iniPz << endl<<endl;
+                    //    std::cout<< "px:" <<iniPx << "py:" << iniPy << "pz:" << iniPz << endl<<endl;
 
                         TMatrixD initrack(6, 1);
                         initrack(0, 0) = iniPosX;
@@ -1012,7 +1006,7 @@ cout<<"+----------------+"<<endl;
                         generateMeasurementNoise(R_1);
                         //R_1.Print();
 
-                        std::vector<int> eventNumbers = {395};
+                        std::vector<int> eventNumbers = {529};
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
 
@@ -1025,26 +1019,18 @@ cout<<"+----------------+"<<endl;
 
                            for(auto iclus = 0; iclus < hitClusterArray->size(); ++iclus){
 
-                             Double_t xi,yi,zi=0.0;
-                             GetPOCA( iniPosX, iniPosY, iniPosZ, iniPx, iniPy, iniPz,  xi, yi, zi);
-
                             //  Get the measurements.
                               auto MeasurementCluster = hitClusterArray->at(iclus);
                               auto measurements = MeasurementCluster.GetPosition();
                               Double_t x1 = measurements.X();
                               Double_t y1 = measurements.Y();
-                              std::cout << x1<<","<<y1<<endl << endl;
-                              Double_t distance = std::sqrt((x1 - xi)*(x1 - xi) + (y1 - yi)*(y1 - yi)) ;
-
+                              //std::cout << x1<<","<<y1<<endl << endl;
 
                               X_vs_Y->Fill(x1,y1);
 
 
                             //Perform Kalman here.
                             //Initial state predictions for protons.
-                            //std::cout <<" distance ::" << distance << endl<<endl;
-
-                             //if (distance < 10e6){ 
                              x_pred = F * initial_state ;
                              P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
 
@@ -1063,7 +1049,7 @@ cout<<"+----------------+"<<endl;
                              P =(I-K*H_1)*P_pred;
                              TMatrixD output = H_1 * x_estimate;              // this projects the estimated state into the output.
                              initial_state = x_estimate;
-                             output.Print();
+                             //output.Print();
 
                              kx_vs_ky->Fill(output(0,0), output(1,0));
 
