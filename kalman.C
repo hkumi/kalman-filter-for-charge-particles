@@ -438,9 +438,9 @@ void generateMeasurementNoise(TMatrixD& R)
     R.ResizeTo(rows, cols);
     R.Zero();
 
-    R(0,0) = 10;
+    R(0,0) = 100;
 
-    R(1,1) = 10;
+    R(1,1) = 100;
 
     //R(2,2) = 1;
 
@@ -1006,7 +1006,7 @@ cout<<"+----------------+"<<endl;
                         generateMeasurementNoise(R_1);
                         //R_1.Print();
 
-                        std::vector<int> eventNumbers = {529};
+                        std::vector<int> eventNumbers = {99};
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
 
@@ -1017,7 +1017,7 @@ cout<<"+----------------+"<<endl;
                         //   covMatrix.Print();
 
 
-                           for(auto iclus = 0; iclus < hitClusterArray->size(); ++iclus){
+                           for(auto iclus = 0; iclus < hitClusterArray->size(); iclus++){
 
                             //  Get the measurements.
                               auto MeasurementCluster = hitClusterArray->at(iclus);
