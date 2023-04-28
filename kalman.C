@@ -962,7 +962,7 @@ cout<<"+----------------+"<<endl;
 
 
                         auto iniPx = p * TMath::Cos(phi * TMath::DegToRad()) * TMath::Sin(theta);        // in MeV/c
-                        auto iniPy = p * TMath::Sin(phi * TMath::DegToRad()) * sin(theta);              // in MeV/c
+                        auto iniPy = p * TMath::Sin(phi * TMath::DegToRad()) * TMath::Sin(theta);              // in MeV/c
                         auto iniPz = p * TMath::Cos(theta);                                              // in MeV/c
                     //    std::cout<< "px:" <<iniPx << "py:" << iniPy << "pz:" << iniPz << endl<<endl;
 
@@ -1051,8 +1051,8 @@ cout<<"+----------------+"<<endl;
                              // Residual between predicted and actual measurement
                              TMatrixD residual = (Y_1 - predictedMeasurement);
                              x_estimate = x_pred + K * residual;
-                            // std::cout << "the estimated state:" << endl << endl;
-                             //x_estimate.Print();
+                             std::cout << "the estimated state:" << endl << endl;
+                             x_estimate.Print();
                              P =(I-K*H_1)*P_pred;
                              TMatrixD output = H_1 * x_estimate;              // this projects the estimated state into the output.
                              initial_state = x_estimate;
@@ -1088,7 +1088,15 @@ c2->cd(2);
         X_vs_Y->SetLineWidth(3);
         X_vs_Y->SetLineColor(kBlack);
         X_vs_Y->SetMarkerColor(kBlack);
+
+        kx_vs_ky->SetMarkerStyle(20);
+        kx_vs_ky->SetMarkerSize(0.3);
+        kx_vs_ky->SetMarkerColor(kRed);
+        //kx_vs_ky->GetXaxis()->SetRange(0, 250);
+        //kx_vs_ky->GetYaxis()->SetRangeUser(0, 250);
         X_vs_Y->Draw();
+
+        kx_vs_ky->Draw("Same");
 
 
 
@@ -1105,7 +1113,7 @@ c2->cd(4);
         kx_vs_ky->SetMarkerStyle(20);
         kx_vs_ky->SetMarkerSize(0.3);
         kx_vs_ky->SetMarkerColor(kRed);
-        //kx_vs_ky->GetXaxis()->SetRangeUser(-200, 50);
+        kx_vs_ky->GetXaxis()->SetRange(0, 250);
         //kx_vs_ky->GetYaxis()->SetRangeUser(0, 250);
         kx_vs_ky->Draw();
 
