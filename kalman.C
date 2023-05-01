@@ -1008,7 +1008,7 @@ cout<<"+----------------+"<<endl;
                         generateMeasurementNoise(R_1);
                         //R_1.Print();
 
-                        std::vector<int> eventNumbers = {99};
+                        std::vector<int> eventNumbers = {441};
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
                            // cout<<"ID: " << goodTrack.GetTrackID()<<endl;
@@ -1029,7 +1029,7 @@ cout<<"+----------------+"<<endl;
                               auto measurements = MeasurementCluster.GetPosition();
                               Double_t x1 = measurements.X();
                               Double_t y1 = measurements.Y();
-                              std::cout << x1<<","<<y1<<endl << endl;
+                              //std::cout << x1<<","<<y1<<endl << endl;
 
                               X_vs_Y->Fill(x1,y1);
 
@@ -1051,8 +1051,8 @@ cout<<"+----------------+"<<endl;
                              // Residual between predicted and actual measurement
                              TMatrixD residual = (Y_1 - predictedMeasurement);
                              x_estimate = x_pred + K * residual;
-                             std::cout << "the estimated state:" << endl << endl;
-                             x_estimate.Print();
+                             //std::cout << "the estimated state:" << endl << endl;
+                            // x_estimate.Print();
                              P =(I-K*H_1)*P_pred;
                              TMatrixD output = H_1 * x_estimate;              // this projects the estimated state into the output.
                              initial_state = x_estimate;
@@ -1101,7 +1101,7 @@ c2->cd(2);
 
 
 
-
+/*
 c2->cd(3);
         phi_pattern->SetMarkerStyle(15);
         phi_pattern->SetMarkerSize(0.3);
@@ -1118,7 +1118,7 @@ c2->cd(4);
         kx_vs_ky->Draw();
 
 
-
+*/
         return(0);
 
 
