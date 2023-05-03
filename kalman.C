@@ -438,9 +438,9 @@ void generateMeasurementNoise(TMatrixD& R)
     R.ResizeTo(rows, cols);
     R.Zero();
 
-    R(0,0) = 10;
+    R(0,0) = 1;
 
-    R(1,1) = 10;
+    R(1,1) = 1;
 
     //R(2,2) = 1;
 
@@ -464,17 +464,17 @@ void Ini_P(TMatrixD &P){
 
         // Define the  matrixes to hold covariance matrix.
 
-        P(0,0) = 10;
+        P(0,0) = 0.01;                    //in meters
 
-        P(1,1) = 10;
+        P(1,1) = 0.01;
 
-        P(2,2) = 10;
+        P(2,2) = 0.01;
 
-        P(3,3) = 10;
+        P(3,3) = 0.01;
 
-        P(4,4) = 10;
+        P(4,4) = 0.01;
 
-        P(5,5) = 10;
+        P(5,5) = 0.01;
 
 
 
@@ -604,7 +604,7 @@ void GetMeasurementMatrix(TMatrixD& H_k) {
 void kalman(){
 
          TH2F *rx_vs_ry = new TH2F("rx_vs_ry", "rungex_vs_rungey", 720, 0, -3, 1000, 0, 2.0);
-         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "fitted states", 720, 0, -3, 1000, 0, 2.0);
+         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "RK4", 720, 0, -3, 1000, 0, 2.0);
 
          TH2F *vx_vs_vy = new TH2F("vx_vs_rvy", "rungevx_vs_rungevy", 720, 0, -3, 1000, 0, 2.0);
          TH2F *Intx_vs_Inty = new TH2F("Intx_vs_Inty", "Intersectionx_vs_Intersectiony", 720, 0, -3, 1000, 0, 2.0);
@@ -646,7 +646,7 @@ void kalman(){
          vx[0] = 10e6;     // initial x velocity unit in m/s
          vy[0] = 10e6;     // initial y velocity unit in m/s
          vz[0] = 10e6;     // initial z velocity unit in m/s.
-        
+
 
         // Define the time step 
 
@@ -744,7 +744,7 @@ cout<<"+----------------+"<<endl;
 
  //        std::cout<<vx[i]<<" "<<vy[i]<<" "<<vz[i]<<endl;
 
-        rx_vs_ry->Fill(vx[i],vy[i]);
+        rx_vs_ry->Fill(x[i],y[i]);
         R_projection->Fill(x[i],y[i],z[i]);
 
         Energy = GetEnergy(vx[i],vy[i],vz[i]);
@@ -811,7 +811,7 @@ cout<<"+----------------+"<<endl;
 
     // Multiply propagator matrix with state vector to get time derivative of state vector
             TMatrixD state_dot_vector = F * state_vector;
-            propagatorx_vs_propagatory->Fill(state_dot_vector(3,0), state_dot_vector(4,0));
+            propagatorx_vs_propagatory->Fill(state_dot_vector(0,0), state_dot_vector(1,0));
             F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
            // state_dot_vector.Print();
         }
@@ -842,7 +842,7 @@ c1->cd(1);
         c2->Divide(2, 2);
         c2->Draw();
         TH2F *angle_vs_energy = new TH2F("angle_vs_energy", "angle_vs_energy", 720, 0, 179, 1000, 0, 100.0);
-        TH2F *X_vs_Y = new TH2F("X_vs_Y", "Simulated data", 720, 0, -3, 1000, 0, 2.0);
+        TH2F *X_vs_Y = new TH2F("X_vs_Y", "PROPAGATOR", 720, 0, -3, 1000, 0, 2.0);
         TH2F *predictedx_vs_predictedy = new TH2F("predictedx_vs_predictedy", "predicted state", 720, 0, -3, 1000, 0, 2.0);
         TH1F *phi_pattern = new TH1F("phi_pattern", "phi_pattern", 1440, -50, 400);
         TH2F *angle_vs_energy_pattern =new TH2F("angle_vs_energy_pattern", "angle_vs_energy_pattern", 720, 0, 179, 1000, 0, 100.0);
@@ -897,7 +897,7 @@ cout<<"+----------------+"<<endl;
             /*----------
             Looping over all the events in
             each of the root files
-            -----------*/ 
+            -----------*/
             for (Int_t i = first_Event; i < last_Event; i++) {
 
                 std::vector<AtTrack> availableTracks = {}; // Tracks founded in the current event
@@ -935,48 +935,59 @@ cout<<"+----------------+"<<endl;
                         AtTrack goodTrack = TrackSelector(availableTracks, thetaValues);
                        // cout<<"ID: " << goodTrack.GetTrackID()<<endl;
                         Double_t phi;
+                        auto hitClusterArray = track.GetHitClusterArray();
+
+                        // Needs to be reversed back for multifit
+                        std::reverse(hitClusterArray->begin(), hitClusterArray->end());
+                        AtHitCluster firstCluster, secondCluster;
+
+                        firstCluster = hitClusterArray->at(0);
+                        secondCluster = hitClusterArray->at(1);
+
+                        auto firstPosition = firstCluster.GetPosition();
+                        auto secondPosition = secondCluster.GetPosition();
+
+                        Double_t iniPx[hitClusterArray->size()], iniPy[hitClusterArray->size()], iniPz[hitClusterArray->size()];
+                        Double_t iniPx1[hitClusterArray->size()], iniPy1[hitClusterArray->size()], iniPz1[hitClusterArray->size()];
+                        Double_t iniPosX[hitClusterArray->size()], iniPosY[hitClusterArray->size()], iniPosZ[hitClusterArray->size()];
+                        Double_t secPosX[hitClusterArray->size()], secPosY[hitClusterArray->size()], secPosZ[hitClusterArray->size()];
+
                         if (goodTrack.GetTrackID() != -1)
                         {
                            phi = GetPhiAngle(goodTrack);
                            //cout<<phi<<endl<<endl;
                            phi_pattern->Fill(phi);
 
-                        }
+                           secPosX[0] = secondPosition.X();
+                           secPosY[0] = secondPosition.Y();
+                           secPosZ[0] = secondPosition.Z();
+
+                           iniPosX[0] = firstPosition.X();
+                           iniPosY[0] = firstPosition.Y();
+                           iniPosZ[0] = firstPosition.Z();
 
 
-                        auto hitClusterArray = track.GetHitClusterArray();
-                         // Needs to be reversed back for multifit
-                        std::reverse(hitClusterArray->begin(), hitClusterArray->end());
- 
-                        AtHitCluster firstCluster, secondCluster;
-
-                        firstCluster = hitClusterArray->at(1);
-                        secondCluster = hitClusterArray->at(2);
-
-                        auto firstPosition = firstCluster.GetPosition();
-                        auto secondPosition = secondCluster.GetPosition();
-
-                        Double_t  iniPosX = firstPosition.X();
-                        Double_t iniPosY = firstPosition.Y();
-                        Double_t iniPosZ = firstPosition.Z();
+                           iniPx[0] = p * TMath::Cos(phi * TMath::DegToRad()) * TMath::Sin(theta);        // in MeV/c
+                           iniPy[0] = p * TMath::Sin(phi * TMath::DegToRad()) * TMath::Sin(theta);              // in MeV/c
+                           iniPz[0] = p * TMath::Cos(theta);                                              // in MeV/c
 
 
-                        auto iniPx = p * TMath::Cos(phi * TMath::DegToRad()) * TMath::Sin(theta);        // in MeV/c
-                        auto iniPy = p * TMath::Sin(phi * TMath::DegToRad()) * TMath::Sin(theta);              // in MeV/c
-                        auto iniPz = p * TMath::Cos(theta);                                              // in MeV/c
-                    //    std::cout<< "px:" <<iniPx << "py:" << iniPy << "pz:" << iniPz << endl<<endl;
-
-                        TMatrixD initrack(6, 1);
-                        initrack(0, 0) = iniPosX;
-                        initrack(1, 0) = iniPosY;
-                        initrack(2, 0) = iniPosZ;
-                        initrack(3, 0) = iniPx;
-                        initrack(4, 0) = iniPy;
-                        initrack(5, 0) = iniPz;
+                           iniPx1[0] = iniPx[0] * 5.344286e-22; //kilogram-meter per second [kg·m/s]
+                           iniPy1[0] = iniPy[0] * 5.344286e-22;
+                           iniPz1[0] = iniPz[0] * 5.344286e-22;
+                           //  std::cout<< "px:" <<iniPosX[0] << "py:" << iniPosY[0] << "pz:" << iniPosZ[0] << endl<<endl;
+                           // std::cout<< "2p:" <<secondPosition.X() << "2p:" << secondPosition.Y() << "2p:" << secondPosition.Z() << endl<<endl;
+                           TMatrixD initial_state(6, 1);
+                           initial_state(0, 0) = iniPosX[0];
+                           initial_state(1, 0) = iniPosY[0];
+                           initial_state(2, 0) = iniPosZ[0];
+                           initial_state(3, 0) = iniPx1[0];
+                           initial_state(4, 0) = iniPy1[0];
+                           initial_state(5, 0) = iniPz1[0];
                      //   initrack.Print();
 
 
-
+                        }
                         /*----------
                         Looping over all the tracks in
                         each of the root files to perform kalman
@@ -1008,30 +1019,186 @@ cout<<"+----------------+"<<endl;
                         generateMeasurementNoise(R_1);
                         //R_1.Print();
 
-                        std::vector<int> eventNumbers = {441};
+                        std::vector<int> eventNumbers = {99};
                         // Iterate over event numbers and access the corresponding events
                         if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
                            // cout<<"ID: " << goodTrack.GetTrackID()<<endl;
                             if (goodTrack.GetTrackID() != -1){
 
-
+                               std::cout<< "px:" <<iniPosX[0] << "py:" << iniPosY[0] << "pz:" << iniPosZ[0] << endl<<endl;
+                               std::cout<< "2p:" <<secondPosition.X() << "2p:" << secondPosition.Y() << "2p:" << secondPosition.Z() << endl<<endl;
                           // std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
-                           TMatrixD initial_state(6,1);
-                           statepred(initial_state,iniPosX,  iniPosY, iniPosZ,  iniPx, iniPy, iniPz);
-                       //    initial_state.Print();
-                        //   covMatrix.Print();
+
+                        //     covMatrix.Print();
+                           //    std::cout<< "px:" <<iniPx1[0] << "py:" << iniPy1[0] << "pz:" << iniPz1[0] << endl<<endl;
+
+                               Int_t n = hitClusterArray->size();
+                               Double_t t1[n];
+                               Double_t l1x[n],l2x[n],l3x[n],l4x[n];
+                               Double_t l1y[n],l2y[n],l3y[n],l4y[n];
+                               Double_t l1z[n],l2z[n],l3z[n],l4z[n];
+
+                               Double_t l1vx[n],l2vx[n],l3vx[n],l4vx[n];
+                               Double_t l1vy[n],l2vy[n],l3vy[n],l4vy[n];
+                               Double_t l1vz[n],l2vz[n],l3vz[n],l4vz[n];
+
+                               for(auto i = 0; i < hitClusterArray->size(); i++){
 
 
-                           for(auto iclus = 0; iclus < hitClusterArray->size(); iclus++){
+                                     l1x[i] = fx(t1[i],iniPx1[i]);
+                                     l1y[i] = fy(t1[i],iniPy1[i]);
+                                     l1z[i] = fz(t1[i],iniPz1[i]);
+                                   //  std::cout << l1x[i]  << " "<< l1y[i]  << " "<< l1z[i] << endl << endl;
+
+                                     l1vx[i] = dxdt(t1[i],iniPx1[i],iniPy1[i],iniPz1[i]);
+                                     l1vy[i] = dydt(t1[i],iniPx1[i],iniPy1[i],iniPz1[i]);
+                                     l1vz[i] = dzdt(t1[i],iniPx1[i],iniPy1[i],iniPz1[i]);
+
+                                     l2x[i] = fx(t1[i]+h*0.5,iniPx1[i]+0.5*h*l1x[i]);
+                                     l2y[i] = fy(t1[i]+h*0.5,iniPy1[i]+0.5*h*l1y[i]);
+                                     l2z[i] = fz(t1[i]+h*0.5,iniPz1[i]+0.5*h*l1z[i]);
+
+                                     l2vx[i] = dxdt(t1[i]+h*0.5,iniPx1[i]+l1vx[i]*0.5*h,iniPy1[i]+l1vy[i]*h*0.5,iniPz1[i]+l1vz[i]*h*0.5);
+                                     l2vy[i] = dydt(t1[i]+h*0.5,iniPx1[i]+l1vx[i]*h*0.5, iniPy1[i]+l1vy[i]*h*0.5,iniPz1[i]+l1vz[i]*h*0.5);
+                                     l2vz[i] = dzdt(t1[i]+h*0.5,iniPx1[i]+l1vx[i]*h*0.5, iniPy1[i]+l1vy[i]*h*0.5, iniPz1[i]+l1vz[i]*h*0.5);
+
+
+                                     l3x[i] = fx(t1[i]+h*0.5,iniPx1[i]+0.5*h*l2x[i]);
+                                     l3y[i] = fy(t1[i]+h*0.5,iniPy1[i]+0.5*h*l2y[i]);
+                                     l3z[i] = fz(t1[i]+h*0.5,iniPz1[i]+0.5*h*l2z[i]);
+
+                                     l3vx[i] = dxdt(t1[i]+h*0.5,iniPx1[i]+l2vx[i]*0.5*h,iniPy1[i]+l2vy[i]*h*0.5,iniPz1[i] + l2vz[i]*h*0.5);
+                                     l3vy[i] = dydt(t1[i]+h*0.5,iniPx1[i]+l2vx[i]*h*0.5, iniPy1[i]+l2vy[i]*h*0.5,iniPz1[i] +l2vz[i]*h*0.5);
+                                     l3vz[i] = dzdt(t1[i]+h*0.5,iniPx1[i]+l2vx[i]*h*0.5, iniPy1[i]+l2vy[i]*h*0.5, iniPz1[i] + l2vz[i]*h*0.5);
+
+                                     l4x[i] = fx(t1[i]+h,iniPx1[i]+l3x[i]*h);
+                                     l4y[i] = fy(t1[i]+h,iniPy1[i]+l3y[i]*h);
+                                     l4z[i] = fz(t1[i]+h,iniPz1[i]+l3z[i]*h);
+
+                                     l4vx[i] = dxdt(t1[i]+h,iniPx1[i]+l3vx[i]*h,iniPy1[i]+l3vy[i]*h,iniPz1[i]+l3vz[i]*h);
+                                     l4vy[i] = dydt(t1[i]+h,iniPx1[i]+l3vx[i]*h,iniPy1[i]+l3vy[i]*h,iniPz1[i]+l3vz[i]*h);
+                                     l4vz[i] = dzdt(t1[i]+h,iniPx1[i]+l3vx[i]*h,iniPy1[i]+l3vy[i]*h,iniPz1[i]+l3vz[i]*h);
+
+
+                                     iniPx1[i+1] = iniPx1[i] + h/6 *( l1vx[i] + 2*l2vx[i] + 2*l3vx[i] + l4vx[i]);
+                                     iniPy1[i+1]  = iniPy1[i] + h/6 *(l1vy[i] + 2*l2vy[i] + 2*l3vy[i] + l4vy[i]);
+                                     iniPz1[i+1]  = iniPz1[i] + h/6 *( l1vz[i] + 2*l2vz[i] + 2*l3vz[i] + l4vz[i]);
+
+                                     iniPosX[i+1] = iniPosX[i] + h/6 *( l1x[i] + 2*l2x[i] + 2*l3x[i] + l4x[i]);
+                                     iniPosY[i+1]  = iniPosY[i] + h/6 *( l1y[i] + 2*l2y[i] + 2*l3y[i] + l4y[i]);
+                                     iniPosZ[i+1]  = iniPosZ[i] + h/6 *( l1z[i] + 2*l2z[i] + 2*l3z[i] + l4z[i]);
+
+                                     secPosX[i+1] =  secPosX[i] + h/6 *( l1x[i] + 2*l2x[i] + 2*l3x[i] + l4x[i]);
+                                     secPosY[i+1]  = secPosY[i] + h/6 *( l1y[i] + 2*l2y[i] + 2*l3y[i] + l4y[i]);
+                                     secPosZ[i+1]  = secPosZ[i] + h/6 *( l1z[i] + 2*l2z[i] + 2*l3z[i] + l4z[i]);
+
+
+                                     t1[i+1]= t1[i] + h;
+
+                                     std::cout<<l2x[i]<< " "<<l2y[i]<<" " << l2z[i] << " " << endl << endl;
+
+                                     iniPx1[i] = iniPx1[i+1];
+                                     iniPz1[i] = iniPz1[i+1];
+                                     iniPy1[i] = iniPy1[i+1];
+
+                                     iniPosX[i] = iniPosX[i+1];
+                                     iniPosZ[i] = iniPosZ[i+1];
+                                     iniPosY[i] = iniPosY[i+1];
+
+                                     secPosX[i] = secPosX[i+1];
+                                     secPosZ[i] = secPosZ[i+1];
+                                     secPosY[i] = secPosY[i+1];
+
+                                     t1[i] = t1[i+1];
+
+
+                                     kx_vs_ky->Fill(secPosX[i],secPosY[i]);
+                                     X_vs_Y->Fill(iniPosX[i],iniPosY[i]);
+                               }
+
+
+                                 // Define the size of the matrix
+                               Int_t rows = 6; // the number of state variables
+                               Int_t cols = hitClusterArray->size(); // the number of steptime.
+
+                               // Define matrix to hold state vectors
+                               TMatrixD  state_matrix1(rows,cols);
+                               Double_t m = 1.6726*TMath::Power(10,-27);       // mass of the particle in kg
+
+
+                               // Fill in matrix with state vectors
+                               for (int j = 0; j < cols; j++) {
+                                   state_matrix1(0,j) = iniPosX[j];
+                                   state_matrix1(1,j) = iniPosY[j];
+                                   state_matrix1(2,j) = iniPosZ[j];
+                                   state_matrix1(3,j) = iniPx1[j];
+                                   state_matrix1(4,j) = iniPy1[j];
+                                   state_matrix1(5,j) = iniPz1[j];
+                               }
+
+
+                               TMatrixD Jacobi_matrix1(6,6);
+                               Jacobi_matrice(Jacobi_matrix1);
+                               //Jacobi_matrix.Print();
+
+
+                               //Identity matrix.
+                               TMatrixD I(6,6);
+                               I_matrix(I);
+                               //I.Print();
+
+                               // Calculate propagator matrix using intermediate matrices
+                               // Initialize F as identity matrix
+                               TMatrixD F1(6,6);
+                               F1.UnitMatrix();
+                               // Compute F1, F2, F3, F4
+                               Double_t dt_2 = 1e-10;
+                               TMatrixD IplusFt (6,6);
+                               IplusFt.Zero();
+                               TMatrixD Ft(6,6);
+
+                               for (int j = 0; j < 4; j++) {
+                                   IplusFt = F1* dt_2;
+                                   Ft  = (1e-10)*Jacobi_matrix1*IplusFt;
+                                   F1     += Ft *((j==0 || j==3) ?  1.0/6.0 : 1.0/3.0);
+                                   //F.Print();
+                               }
+
+                               // Define matrix to hold time derivatives of state vectors
+                               TMatrixD  state_dot_matrix1(rows,cols);
+
+                               // Calculate time derivatives of state vectors
+                               for (int k = 0; k < cols; k++) {
+                                   // Extract state vector at time t. 
+                                   TMatrixD state_vector1(6,1);
+                                   for (int j = 0; j < 6; j++) {
+                                       state_vector1(j,0) = state_matrix1(j,k);
+                                   }
+
+                                   // Multiply propagator matrix with state vector to get time derivative of state vector
+                                   TMatrixD state_dot_vector1 = F1 * state_vector1;
+                                   //X_vs_Y->Fill(state_dot_vector1(0,0), state_dot_vector1(1,0));
+                                   //F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
+                                   // state_dot_vector.Print();
+                               }
+
+
+
+
+
+
+
+
+                          /* for(auto iclus = 0; iclus < hitClusterArray->size(); iclus++){
 
                             //  Get the measurements.
                               auto MeasurementCluster = hitClusterArray->at(iclus);
                               auto measurements = MeasurementCluster.GetPosition();
-                              Double_t x1 = measurements.X();
-                              Double_t y1 = measurements.Y();
+                              Y_1(0,0) = iniPosX[iclus];//measurements.X();
+                              Y_1(1,0) = iniPosY[iclus];//measurements.Y();
                               //std::cout << x1<<","<<y1<<endl << endl;
 
-                              X_vs_Y->Fill(x1,y1);
+                              X_vs_Y->Fill(Y_1(0,0),Y_1(1,0));
 
 
                             //Perform Kalman here.
@@ -1041,9 +1208,6 @@ cout<<"+----------------+"<<endl;
 
                              //this updates the  predicted states and the covariances.
                              K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
-                             //Extract the measurements into a TMatrixD. 
-                             Y_1(0,0) = x1;
-                             Y_1(1,0) = y1;
 
                              // Predicted measurement
                              TMatrixD predictedMeasurement = (H_1 * x_pred);
@@ -1059,7 +1223,7 @@ cout<<"+----------------+"<<endl;
                              //std::cout << "estimated state:" << endl << endl;
                              //output.Print();
                              kx_vs_ky->Fill(output(0,0), output(1,0));
-                           }
+                           }*/
 
                            }
 
@@ -1077,27 +1241,34 @@ cout<<"+----------------+"<<endl;
 
 /*
 c2->cd(1);
-        angle_vs_energy_pattern->SetMarkerStyle(15);
-        angle_vs_energy_pattern->SetLineWidth(1);
-        angle_vs_energy_pattern->Draw();*/
-c2->cd(2);
-        
-
         X_vs_Y->SetMarkerStyle(21);
         X_vs_Y->SetMarkerSize(0.3);
         X_vs_Y->SetLineWidth(3);
         X_vs_Y->SetLineColor(kBlack);
         X_vs_Y->SetMarkerColor(kBlack);
-
-        kx_vs_ky->SetMarkerStyle(20);
-        kx_vs_ky->SetMarkerSize(0.3);
-        kx_vs_ky->SetMarkerColor(kRed);
-        //kx_vs_ky->GetXaxis()->SetRange(0, 250);
-        //kx_vs_ky->GetYaxis()->SetRangeUser(0, 250);
         X_vs_Y->Draw();
 
-        kx_vs_ky->Draw("Same");
+*/
+c2->cd(2);
+       
 
+        X_vs_Y->SetMarkerStyle(22);
+        X_vs_Y->SetMarkerSize(0.5);
+        X_vs_Y->SetLineWidth(3);
+//        X_vs_Y->SetLineColor(kBlack);
+        X_vs_Y->SetMarkerColor(kRed);
+        //X_vs_Y->Draw();
+
+        kx_vs_ky->SetMarkerStyle(20);
+        kx_vs_ky->SetMarkerSize(0.5);
+        kx_vs_ky->SetMarkerColor(kBlue);
+        //kx_vs_ky->GetXaxis()->SetRange(0, 250);
+        //kx_vs_ky->GetYaxis()->SetRangeUser(0, 250);
+        
+
+        kx_vs_ky->Draw();
+
+        X_vs_Y->Draw("same");
 
 
 
@@ -1106,19 +1277,9 @@ c2->cd(3);
         phi_pattern->SetMarkerStyle(15);
         phi_pattern->SetMarkerSize(0.3);
         phi_pattern->Draw();
-
-c2->cd(4);
-        
-
-        kx_vs_ky->SetMarkerStyle(20);
-        kx_vs_ky->SetMarkerSize(0.3);
-        kx_vs_ky->SetMarkerColor(kRed);
-        kx_vs_ky->GetXaxis()->SetRange(0, 250);
-        //kx_vs_ky->GetYaxis()->SetRangeUser(0, 250);
-        kx_vs_ky->Draw();
-
-
 */
+
+
         return(0);
 
 
