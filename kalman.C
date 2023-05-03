@@ -604,7 +604,7 @@ void GetMeasurementMatrix(TMatrixD& H_k) {
 void kalman(){
 
          TH2F *rx_vs_ry = new TH2F("rx_vs_ry", "rungex_vs_rungey", 720, 0, -3, 1000, 0, 2.0);
-         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "RK4", 720, 0, -3, 1000, 0, 2.0);
+         TH2F *kx_vs_ky = new TH2F("kx_vs_ky", "RK4", 720, 0, -3, 100, 0, 2.0);
 
          TH2F *vx_vs_vy = new TH2F("vx_vs_rvy", "rungevx_vs_rungevy", 720, 0, -3, 1000, 0, 2.0);
          TH2F *Intx_vs_Inty = new TH2F("Intx_vs_Inty", "Intersectionx_vs_Intersectiony", 720, 0, -3, 1000, 0, 2.0);
@@ -842,7 +842,7 @@ c1->cd(1);
         c2->Divide(2, 2);
         c2->Draw();
         TH2F *angle_vs_energy = new TH2F("angle_vs_energy", "angle_vs_energy", 720, 0, 179, 1000, 0, 100.0);
-        TH2F *X_vs_Y = new TH2F("X_vs_Y", "PROPAGATOR", 720, 0, -3, 1000, 0, 2.0);
+        TH2F *X_vs_Y = new TH2F("X_vs_Y", "PROPAGATOR", 720, 0, -3, 100, 0, 2.0);
         TH2F *predictedx_vs_predictedy = new TH2F("predictedx_vs_predictedy", "predicted state", 720, 0, -3, 1000, 0, 2.0);
         TH1F *phi_pattern = new TH1F("phi_pattern", "phi_pattern", 1440, -50, 400);
         TH2F *angle_vs_energy_pattern =new TH2F("angle_vs_energy_pattern", "angle_vs_energy_pattern", 720, 0, 179, 1000, 0, 100.0);
@@ -984,7 +984,8 @@ cout<<"+----------------+"<<endl;
                            initial_state(3, 0) = iniPx1[0];
                            initial_state(4, 0) = iniPy1[0];
                            initial_state(5, 0) = iniPz1[0];
-                     //   initrack.Print();
+
+
 
 
                         }
@@ -1025,9 +1026,12 @@ cout<<"+----------------+"<<endl;
                            // cout<<"ID: " << goodTrack.GetTrackID()<<endl;
                             if (goodTrack.GetTrackID() != -1){
 
-                               std::cout<< "px:" <<iniPosX[0] << "py:" << iniPosY[0] << "pz:" << iniPosZ[0] << endl<<endl;
-                               std::cout<< "2p:" <<secondPosition.X() << "2p:" << secondPosition.Y() << "2p:" << secondPosition.Z() << endl<<endl;
-                          // std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
+                               //std::cout<< "px:" <<iniPosX[0] << "py:" << iniPosY[0] << "pz:" << iniPosZ[0] << endl<<endl;
+                               //std::cout<< "2p:" <<secondPosition.X() << "2p:" << secondPosition.Y() << "2p:" << secondPosition.Z() << endl<<endl;
+                              std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
+                               X_vs_Y->Fill(secPosX[0],secPosY[0]);
+                               kx_vs_ky->Fill(iniPosX[0],iniPosY[0]);
+
 
                         //     covMatrix.Print();
                            //    std::cout<< "px:" <<iniPx1[0] << "py:" << iniPy1[0] << "pz:" << iniPz1[0] << endl<<endl;
@@ -1082,9 +1086,9 @@ cout<<"+----------------+"<<endl;
 
                                      iniPx1[i+1] = iniPx1[i] + h/6 *( l1vx[i] + 2*l2vx[i] + 2*l3vx[i] + l4vx[i]);
                                      iniPy1[i+1]  = iniPy1[i] + h/6 *(l1vy[i] + 2*l2vy[i] + 2*l3vy[i] + l4vy[i]);
-                                     iniPz1[i+1]  = iniPz1[i] + h/6 *( l1vz[i] + 2*l2vz[i] + 2*l3vz[i] + l4vz[i]);
+                                     iniPz1[i+1]  = iniPz1[i] + h/6 *(l1vz[i] + 2*l2vz[i] + 2*l3vz[i] + l4vz[i]);
 
-                                     iniPosX[i+1] = iniPosX[i] + h/6 *( l1x[i] + 2*l2x[i] + 2*l3x[i] + l4x[i]);
+                                     iniPosX[i+1] = iniPosX[i] + h/6 *( l1x[i]  + 2*l2x[i] + 2*l3x[i] + l4x[i]);
                                      iniPosY[i+1]  = iniPosY[i] + h/6 *( l1y[i] + 2*l2y[i] + 2*l3y[i] + l4y[i]);
                                      iniPosZ[i+1]  = iniPosZ[i] + h/6 *( l1z[i] + 2*l2z[i] + 2*l3z[i] + l4z[i]);
 
@@ -1095,7 +1099,7 @@ cout<<"+----------------+"<<endl;
 
                                      t1[i+1]= t1[i] + h;
 
-                                     std::cout<<l2x[i]<< " "<<l2y[i]<<" " << l2z[i] << " " << endl << endl;
+                                     //std::cout<<iniPx1[i]<< " "<<iniPy1[i]<<" "<< iniPx1[i] << " " << endl << endl;
 
                                      iniPx1[i] = iniPx1[i+1];
                                      iniPz1[i] = iniPz1[i+1];
@@ -1112,8 +1116,8 @@ cout<<"+----------------+"<<endl;
                                      t1[i] = t1[i+1];
 
 
-                                     kx_vs_ky->Fill(secPosX[i],secPosY[i]);
-                                     X_vs_Y->Fill(iniPosX[i],iniPosY[i]);
+                                  //  kx_vs_ky->Fill(secPosX[0],secPosY[0]);
+                                  //  X_vs_Y->Fill(iniPosX[0],iniPosY[0]);
                                }
 
 
@@ -1254,8 +1258,6 @@ c2->cd(2);
 
         X_vs_Y->SetMarkerStyle(22);
         X_vs_Y->SetMarkerSize(0.5);
-        X_vs_Y->SetLineWidth(3);
-//        X_vs_Y->SetLineColor(kBlack);
         X_vs_Y->SetMarkerColor(kRed);
         //X_vs_Y->Draw();
 
@@ -1266,7 +1268,7 @@ c2->cd(2);
         //kx_vs_ky->GetYaxis()->SetRangeUser(0, 250);
         
 
-        kx_vs_ky->Draw();
+  //      kx_vs_ky->Draw("");
 
         X_vs_Y->Draw("same");
 
@@ -1278,7 +1280,6 @@ c2->cd(3);
         phi_pattern->SetMarkerSize(0.3);
         phi_pattern->Draw();
 */
-
 
         return(0);
 
