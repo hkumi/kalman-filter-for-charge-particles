@@ -339,24 +339,23 @@ AtTrack TrackSelector(std::vector<AtTrack> trackCandidates, std::vector<Double_t
     //Discarding vectors with no tracks
     if ( numberOfTracks >= 1)
     {
-   
         // One track with a theta angle > 20º is acceptable
         if (numberOfTracks == 1)
-        { 
+        {
             if(180-thetaValues[0]*TMath::RadToDeg()>20.)
             {
                AtTrack selectedTrack = trackCandidates[0];
                return selectedTrack;
             } else {AtTrack nullTrack; return nullTrack;}
         }
-        else 
-        { 
+        else
+        {
             Int_t thetaIndex = GetIndexOfMaxValue(thetaValues);// This corresponds to the max value of theta in rad (the minimum value in  degrees after the following conversion: 180-theta)
             trackCandidates.erase(trackCandidates.begin() + thetaIndex);
             std::vector<Double_t> zValues = {};
 
             for (auto track = trackCandidates.begin(); track != trackCandidates.end(); ++track) // Loop over track candidatess
-            { 
+            {
                 auto pHitClusterArray = track->GetHitClusterArray();
                 zValues.push_back(LastZValue(pHitClusterArray)); // Get Max Z value of the Clusters
             }
@@ -366,7 +365,7 @@ AtTrack TrackSelector(std::vector<AtTrack> trackCandidates, std::vector<Double_t
             return selectedTrack;
         }
     } else {AtTrack nullTrack; return nullTrack;}
-} 
+}
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -618,7 +617,7 @@ void kalman(){
 
 
 
-         TCanvas *c1 = new TCanvas();
+         TCanvas *c1 = new TCanvas("c1", "My Graph", 800, 600);
          c1->Divide(2, 2);
          c1->Draw();
 
@@ -838,7 +837,7 @@ c1->cd(1);
 */
 
 
-        TCanvas *c2 = new TCanvas();
+        TCanvas *c2 = new TCanvas("c2", "My Graph", 800, 600);
         c2->Divide(2, 2);
         c2->Draw();
         TH2F *angle_vs_energy = new TH2F("angle_vs_energy", "angle_vs_energy", 720, 0, 179, 1000, 0, 100.0);
@@ -874,7 +873,7 @@ cout<<"+----------------+"<<endl;
 
         /*-----------
          Fist loop. Loops over all
-         the files that need to be analize
+         the files that need to be analyze
         -----------*/
         for (auto iFile = 0; iFile < files.size(); ++iFile) {
 
@@ -911,11 +910,10 @@ cout<<"+----------------+"<<endl;
                     std::vector<AtTrack> &patternTrackCand = patternEvent->GetTrackCand();
 
                     for (auto track : patternTrackCand) {
-
-                        if ( track.GetHitClusterArray()->size() < 5) {
+                        if (track.GetHitClusterArray()->size() < 5) {
+                           std::cout <<track.GetTrackID();
                            continue;
                         }
-
                         Double_t theta = track.GetGeoTheta();
                         Double_t rad   = track.GetGeoRadius();
                         Double_t B_f = -3.0;                         //in Tesla.
@@ -933,30 +931,31 @@ cout<<"+----------------+"<<endl;
 
                         // Selecting track to get phi angle
                         AtTrack goodTrack = TrackSelector(availableTracks, thetaValues);
-                       // cout<<"ID: " << goodTrack.GetTrackID()<<endl;
-                        Double_t phi;
-                        auto hitClusterArray = track.GetHitClusterArray();
+                        auto hitClusterArray = goodTrack.GetHitClusterArray();
+                        //cout<<"ID: " << goodTrack.GetTrackID()<<endl;
+                        if (goodTrack.GetTrackID() != -1){
 
-                        // Needs to be reversed back for multifit
-                        std::reverse(hitClusterArray->begin(), hitClusterArray->end());
-                        AtHitCluster firstCluster, secondCluster;
+                           Double_t phi;
+                         //  auto hitClusterArray = goodtrack.GetHitClusterArray();
 
-                        firstCluster = hitClusterArray->at(0);
-                        secondCluster = hitClusterArray->at(1);
+                           // Needs to be reversed back for multifit
+                           std::reverse(hitClusterArray->begin(), hitClusterArray->end());
+                           AtHitCluster firstCluster, secondCluster;
 
-                        auto firstPosition = firstCluster.GetPosition();
-                        auto secondPosition = secondCluster.GetPosition();
+                           firstCluster = hitClusterArray->at(0);
+                           secondCluster = hitClusterArray->at(1);
 
-                        Double_t iniPx[hitClusterArray->size()], iniPy[hitClusterArray->size()], iniPz[hitClusterArray->size()];
-                        Double_t iniPx1[hitClusterArray->size()], iniPy1[hitClusterArray->size()], iniPz1[hitClusterArray->size()];
-                        Double_t iniPosX[hitClusterArray->size()], iniPosY[hitClusterArray->size()], iniPosZ[hitClusterArray->size()];
-                        Double_t secPosX[hitClusterArray->size()], secPosY[hitClusterArray->size()], secPosZ[hitClusterArray->size()];
+                           auto firstPosition = firstCluster.GetPosition();
+                           auto secondPosition = secondCluster.GetPosition();
 
-                        if (goodTrack.GetTrackID() != -1)
-                        {
-                           phi = GetPhiAngle(goodTrack);
-                           //cout<<phi<<endl<<endl;
-                           phi_pattern->Fill(phi);
+                           Double_t iniPx[hitClusterArray->size()], iniPy[hitClusterArray->size()], iniPz[hitClusterArray->size()];
+                           Double_t iniPx1[hitClusterArray->size()], iniPy1[hitClusterArray->size()], iniPz1[hitClusterArray->size()];
+                           Double_t iniPosX[hitClusterArray->size()], iniPosY[hitClusterArray->size()], iniPosZ[hitClusterArray->size()];
+                           Double_t secPosX[hitClusterArray->size()], secPosY[hitClusterArray->size()], secPosZ[hitClusterArray->size()];
+                           // std::cout  << " Track is good! " << endl << "\n";
+                            //phi = GetPhiAngle(goodTrack);
+                            //cout<<phi<<endl<<endl;
+                            //phi_pattern->Fill(phi);
 
                            secPosX[0] = secondPosition.X();
                            secPosY[0] = secondPosition.Y();
@@ -966,17 +965,25 @@ cout<<"+----------------+"<<endl;
                            iniPosY[0] = firstPosition.Y();
                            iniPosZ[0] = firstPosition.Z();
 
+                           phi = TMath::ATan2(secPosY[0] - iniPosY[0], secPosX[0] - iniPosX[0]);
+                           Double_t phiDeg;
+                           if (phi < 0){
+                              phiDeg = 360+ phi*TMath::RadToDeg();
+                           }  else {
+                              phiDeg = phi*TMath::RadToDeg();
+                           }
 
-                           iniPx[0] = p * TMath::Cos(phi * TMath::DegToRad()) * TMath::Sin(theta);        // in MeV/c
-                           iniPy[0] = p * TMath::Sin(phi * TMath::DegToRad()) * TMath::Sin(theta);              // in MeV/c
+
+                           iniPx[0] = p * TMath::Cos(phiDeg * TMath::DegToRad()) * TMath::Sin(theta);        // in MeV/c
+                           iniPy[0] = p * TMath::Sin(phiDeg * TMath::DegToRad()) * TMath::Sin(theta);              // in MeV/c
                            iniPz[0] = p * TMath::Cos(theta);                                              // in MeV/c
 
 
-                           iniPx1[0] = iniPx[0] * 5.344286e-22; //kilogram-meter per second [kg·m/s]
-                           iniPy1[0] = iniPy[0] * 5.344286e-22;
-                           iniPz1[0] = iniPz[0] * 5.344286e-22;
-                           //  std::cout<< "px:" <<iniPosX[0] << "py:" << iniPosY[0] << "pz:" << iniPosZ[0] << endl<<endl;
-                           // std::cout<< "2p:" <<secondPosition.X() << "2p:" << secondPosition.Y() << "2p:" << secondPosition.Z() << endl<<endl;
+                           iniPx1[0] = (iniPx[0] * 5.344286e-22)/m; //kilogram-meter per second [kg·m/s]
+                           iniPy1[0] = (iniPy[0] * 5.344286e-22)/m;
+                           iniPz1[0] = (iniPz[0] * 5.344286e-22)/m;
+                           //std::cout<< "px:" <<iniPx1[0] << "py:" << iniPy1[0] << "pz:" << iniPz1[0] << endl<<endl;
+                           //std::cout<< "2p:" <<secondPosition.X() << "2p:" << secondPosition.Y() << "2p:" << secondPosition.Z() << endl<<endl;
                            TMatrixD initial_state(6, 1);
                            initial_state(0, 0) = iniPosX[0];
                            initial_state(1, 0) = iniPosY[0];
@@ -986,58 +993,50 @@ cout<<"+----------------+"<<endl;
                            initial_state(5, 0) = iniPz1[0];
 
 
+                            /*----------
+                              Looping over all the clusters in
+                              each track to perform kalman
+                            -----------*/
+
+                            TMatrixD x_pred(6,1);
+                            TMatrixD P_pred(6,6);
+                            TMatrixD K(6,2);
+                            TMatrixD Y_1(2,1); //Observation matrix
+                            TMatrixD C_1(2,2);
+                            TMatrixD Z_1(2,1);
+                            TMatrixD x_estimate(6,1);
 
 
-                        }
-                        /*----------
-                        Looping over all the tracks in
-                        each of the root files to perform kalman
-                        -----------*/
-                        TMatrixD x_pred(6,1);
-                        TMatrixD P_pred(6,6);
-                        TMatrixD K(6,2);
-                        TMatrixD Y_1(2,1); //Observation matrix
-                        TMatrixD C_1(2,2);
-                        TMatrixD Z_1(2,1);
-                        TMatrixD x_estimate(6,1);
+                            TMatrixD Q(6,6);
+                            generateGaussianNoise(Q); // Generates a 6x6 matrix of Gaussian noise with mean 0 and standard deviation 1
+                            //Q.Print();
+
+                            TMatrixD P(6,6);
+                            Ini_P(P);
+
+                            TMatrixD H_1(2,6);
+                            // Get the measurement matrix
+                            GetMeasurementMatrix(H_1);
+                            //H_1.Print();
 
 
-                        TMatrixD Q(6,6);
-                        generateGaussianNoise(Q); // Generates a 6x6 matrix of Gaussian noise with mean 0 and standard deviation 1
-                        //Q.Print();
+                            // Error in Measurement.
+                            TMatrixD R_1(2,2);
+                            generateMeasurementNoise(R_1);
+                            //R_1.Print();
 
-                        TMatrixD P(6,6);
-                        Ini_P(P);
+                            std::vector<int> eventNumbers = {369};
+                            // Iterate over event numbers and access the corresponding events
+                            if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
+                               //cout<<"ID: " << goodTrack.GetTrackID()<<endl;
 
-                        TMatrixD H_1(2,6);
-                        // Get the measurement matrix
-                        GetMeasurementMatrix(H_1);
-                        //H_1.Print();
-
-
-                        // Error in Measurement.
-                        TMatrixD R_1(2,2);
-                        generateMeasurementNoise(R_1);
-                        //R_1.Print();
-
-                        std::vector<int> eventNumbers = {99};
-                        // Iterate over event numbers and access the corresponding events
-                        if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
-                           // cout<<"ID: " << goodTrack.GetTrackID()<<endl;
-                            if (goodTrack.GetTrackID() != -1){
-
-                               //std::cout<< "px:" <<iniPosX[0] << "py:" << iniPosY[0] << "pz:" << iniPosZ[0] << endl<<endl;
+                              // std::cout<< "px:" <<iniPosX[0] << "py:" << iniPosY[0] << "pz:" << iniPosZ[0] << endl<<endl;
                                //std::cout<< "2p:" <<secondPosition.X() << "2p:" << secondPosition.Y() << "2p:" << secondPosition.Z() << endl<<endl;
-                              std::cout<< "Processing event " << i  << "with " << track.GetHitClusterArray()->size() << " clusters" << endl;
-                               X_vs_Y->Fill(secPosX[0],secPosY[0]);
-                               kx_vs_ky->Fill(iniPosX[0],iniPosY[0]);
-
-
-                        //     covMatrix.Print();
-                           //    std::cout<< "px:" <<iniPx1[0] << "py:" << iniPy1[0] << "pz:" << iniPz1[0] << endl<<endl;
+                               //std::cout<< "Processing event " << i  << "with " << goodTrack.GetHitClusterArray()->size() << " clusters" << endl;
+                               //std::cout<< "px:" <<iniPx1[0] << "py:" << iniPy1[0] << "pz:" << iniPz1[0] << endl<<endl;
 
                                Int_t n = hitClusterArray->size();
-                               Double_t t1[n];
+                               Double_t t1[n],posx1[n],posy1[n],posx2[n],posy2[n];
                                Double_t l1x[n],l2x[n],l3x[n],l4x[n];
                                Double_t l1y[n],l2y[n],l3y[n],l4y[n];
                                Double_t l1z[n],l2z[n],l3z[n],l4z[n];
@@ -1048,78 +1047,213 @@ cout<<"+----------------+"<<endl;
 
                                for(auto i = 0; i < hitClusterArray->size(); i++){
 
+                                  l1x[i] = fx(t1[i],iniPx1[i]);
+                                  l1y[i] = fy(t1[i],iniPy1[i]);
+                                  l1z[i] = fz(t1[i],iniPz1[i]);
+                                  // std::cout << l1x[i]  << " "<< l1y[i]  << " "<< l1z[i] << endl << endl;
 
-                                     l1x[i] = fx(t1[i],iniPx1[i]);
-                                     l1y[i] = fy(t1[i],iniPy1[i]);
-                                     l1z[i] = fz(t1[i],iniPz1[i]);
-                                   //  std::cout << l1x[i]  << " "<< l1y[i]  << " "<< l1z[i] << endl << endl;
+                                  l1vx[i] = dxdt(t1[i],iniPx1[i],iniPy1[i],iniPz1[i]);
+                                  l1vy[i] = dydt(t1[i],iniPx1[i],iniPy1[i],iniPz1[i]);
+                                  l1vz[i] = dzdt(t1[i],iniPx1[i],iniPy1[i],iniPz1[i]);
 
-                                     l1vx[i] = dxdt(t1[i],iniPx1[i],iniPy1[i],iniPz1[i]);
-                                     l1vy[i] = dydt(t1[i],iniPx1[i],iniPy1[i],iniPz1[i]);
-                                     l1vz[i] = dzdt(t1[i],iniPx1[i],iniPy1[i],iniPz1[i]);
+                                  l2x[i] = fx(t1[i]+h*0.5,iniPx1[i]+0.5*h*l1x[i]);
+                                  l2y[i] = fy(t1[i]+h*0.5,iniPy1[i]+0.5*h*l1y[i]);
+                                  l2z[i] = fz(t1[i]+h*0.5,iniPz1[i]+0.5*h*l1z[i]);
 
-                                     l2x[i] = fx(t1[i]+h*0.5,iniPx1[i]+0.5*h*l1x[i]);
-                                     l2y[i] = fy(t1[i]+h*0.5,iniPy1[i]+0.5*h*l1y[i]);
-                                     l2z[i] = fz(t1[i]+h*0.5,iniPz1[i]+0.5*h*l1z[i]);
-
-                                     l2vx[i] = dxdt(t1[i]+h*0.5,iniPx1[i]+l1vx[i]*0.5*h,iniPy1[i]+l1vy[i]*h*0.5,iniPz1[i]+l1vz[i]*h*0.5);
-                                     l2vy[i] = dydt(t1[i]+h*0.5,iniPx1[i]+l1vx[i]*h*0.5, iniPy1[i]+l1vy[i]*h*0.5,iniPz1[i]+l1vz[i]*h*0.5);
-                                     l2vz[i] = dzdt(t1[i]+h*0.5,iniPx1[i]+l1vx[i]*h*0.5, iniPy1[i]+l1vy[i]*h*0.5, iniPz1[i]+l1vz[i]*h*0.5);
-
-
-                                     l3x[i] = fx(t1[i]+h*0.5,iniPx1[i]+0.5*h*l2x[i]);
-                                     l3y[i] = fy(t1[i]+h*0.5,iniPy1[i]+0.5*h*l2y[i]);
-                                     l3z[i] = fz(t1[i]+h*0.5,iniPz1[i]+0.5*h*l2z[i]);
-
-                                     l3vx[i] = dxdt(t1[i]+h*0.5,iniPx1[i]+l2vx[i]*0.5*h,iniPy1[i]+l2vy[i]*h*0.5,iniPz1[i] + l2vz[i]*h*0.5);
-                                     l3vy[i] = dydt(t1[i]+h*0.5,iniPx1[i]+l2vx[i]*h*0.5, iniPy1[i]+l2vy[i]*h*0.5,iniPz1[i] +l2vz[i]*h*0.5);
-                                     l3vz[i] = dzdt(t1[i]+h*0.5,iniPx1[i]+l2vx[i]*h*0.5, iniPy1[i]+l2vy[i]*h*0.5, iniPz1[i] + l2vz[i]*h*0.5);
-
-                                     l4x[i] = fx(t1[i]+h,iniPx1[i]+l3x[i]*h);
-                                     l4y[i] = fy(t1[i]+h,iniPy1[i]+l3y[i]*h);
-                                     l4z[i] = fz(t1[i]+h,iniPz1[i]+l3z[i]*h);
-
-                                     l4vx[i] = dxdt(t1[i]+h,iniPx1[i]+l3vx[i]*h,iniPy1[i]+l3vy[i]*h,iniPz1[i]+l3vz[i]*h);
-                                     l4vy[i] = dydt(t1[i]+h,iniPx1[i]+l3vx[i]*h,iniPy1[i]+l3vy[i]*h,iniPz1[i]+l3vz[i]*h);
-                                     l4vz[i] = dzdt(t1[i]+h,iniPx1[i]+l3vx[i]*h,iniPy1[i]+l3vy[i]*h,iniPz1[i]+l3vz[i]*h);
+                                  l2vx[i] = dxdt(t1[i]+h*0.5,iniPx1[i]+l1vx[i]*0.5*h,iniPy1[i]+l1vy[i]*h*0.5,iniPz1[i]+l1vz[i]*h*0.5);
+                                  l2vy[i] = dydt(t1[i]+h*0.5,iniPx1[i]+l1vx[i]*h*0.5, iniPy1[i]+l1vy[i]*h*0.5,iniPz1[i]+l1vz[i]*h*0.5);
+                                  l2vz[i] = dzdt(t1[i]+h*0.5,iniPx1[i]+l1vx[i]*h*0.5, iniPy1[i]+l1vy[i]*h*0.5, iniPz1[i]+l1vz[i]*h*0.5);
 
 
-                                     iniPx1[i+1] = iniPx1[i] + h/6 *( l1vx[i] + 2*l2vx[i] + 2*l3vx[i] + l4vx[i]);
-                                     iniPy1[i+1]  = iniPy1[i] + h/6 *(l1vy[i] + 2*l2vy[i] + 2*l3vy[i] + l4vy[i]);
-                                     iniPz1[i+1]  = iniPz1[i] + h/6 *(l1vz[i] + 2*l2vz[i] + 2*l3vz[i] + l4vz[i]);
+                                  l3x[i] = fx(t1[i]+h*0.5,iniPx1[i]+0.5*h*l2x[i]);
+                                  l3y[i] = fy(t1[i]+h*0.5,iniPy1[i]+0.5*h*l2y[i]);
+                                  l3z[i] = fz(t1[i]+h*0.5,iniPz1[i]+0.5*h*l2z[i]);
 
-                                     iniPosX[i+1] = iniPosX[i] + h/6 *( l1x[i]  + 2*l2x[i] + 2*l3x[i] + l4x[i]);
-                                     iniPosY[i+1]  = iniPosY[i] + h/6 *( l1y[i] + 2*l2y[i] + 2*l3y[i] + l4y[i]);
-                                     iniPosZ[i+1]  = iniPosZ[i] + h/6 *( l1z[i] + 2*l2z[i] + 2*l3z[i] + l4z[i]);
+                                  l3vx[i] = dxdt(t1[i]+h*0.5,iniPx1[i]+l2vx[i]*0.5*h,iniPy1[i]+l2vy[i]*h*0.5,iniPz1[i] + l2vz[i]*h*0.5);
+                                  l3vy[i] = dydt(t1[i]+h*0.5,iniPx1[i]+l2vx[i]*h*0.5, iniPy1[i]+l2vy[i]*h*0.5,iniPz1[i] +l2vz[i]*h*0.5);
+                                  l3vz[i] = dzdt(t1[i]+h*0.5,iniPx1[i]+l2vx[i]*h*0.5, iniPy1[i]+l2vy[i]*h*0.5, iniPz1[i] + l2vz[i]*h*0.5);
 
-                                     secPosX[i+1] =  secPosX[i] + h/6 *( l1x[i] + 2*l2x[i] + 2*l3x[i] + l4x[i]);
-                                     secPosY[i+1]  = secPosY[i] + h/6 *( l1y[i] + 2*l2y[i] + 2*l3y[i] + l4y[i]);
-                                     secPosZ[i+1]  = secPosZ[i] + h/6 *( l1z[i] + 2*l2z[i] + 2*l3z[i] + l4z[i]);
+                                  l4x[i] = fx(t1[i]+h,iniPx1[i]+l3x[i]*h);
+                                  l4y[i] = fy(t1[i]+h,iniPy1[i]+l3y[i]*h);
+                                  l4z[i] = fz(t1[i]+h,iniPz1[i]+l3z[i]*h);
 
-
-                                     t1[i+1]= t1[i] + h;
-
-                                     //std::cout<<iniPx1[i]<< " "<<iniPy1[i]<<" "<< iniPx1[i] << " " << endl << endl;
-
-                                     iniPx1[i] = iniPx1[i+1];
-                                     iniPz1[i] = iniPz1[i+1];
-                                     iniPy1[i] = iniPy1[i+1];
-
-                                     iniPosX[i] = iniPosX[i+1];
-                                     iniPosZ[i] = iniPosZ[i+1];
-                                     iniPosY[i] = iniPosY[i+1];
-
-                                     secPosX[i] = secPosX[i+1];
-                                     secPosZ[i] = secPosZ[i+1];
-                                     secPosY[i] = secPosY[i+1];
-
-                                     t1[i] = t1[i+1];
+                                  l4vx[i] = dxdt(t1[i]+h,iniPx1[i]+l3vx[i]*h,iniPy1[i]+l3vy[i]*h,iniPz1[i]+l3vz[i]*h);
+                                  l4vy[i] = dydt(t1[i]+h,iniPx1[i]+l3vx[i]*h,iniPy1[i]+l3vy[i]*h,iniPz1[i]+l3vz[i]*h);
+                                  l4vz[i] = dzdt(t1[i]+h,iniPx1[i]+l3vx[i]*h,iniPy1[i]+l3vy[i]*h,iniPz1[i]+l3vz[i]*h);
 
 
-                                  //  kx_vs_ky->Fill(secPosX[0],secPosY[0]);
-                                  //  X_vs_Y->Fill(iniPosX[0],iniPosY[0]);
+                                  iniPx1[i+1] = iniPx1[i] + h/6 *( l1vx[i] + 2*l2vx[i] + 2*l3vx[i] + l4vx[i]);
+                                  iniPy1[i+1]  = iniPy1[i] + h/6 *(l1vy[i] + 2*l2vy[i] + 2*l3vy[i] + l4vy[i]);
+                                  iniPz1[i+1]  = iniPz1[i] + h/6 *(l1vz[i] + 2*l2vz[i] + 2*l3vz[i] + l4vz[i]);
+
+                                  iniPosX[i+1] = iniPosX[i] + h/6 *( l1x[i]  + 2*l2x[i] + 2*l3x[i] + l4x[i]);
+                                  iniPosY[i+1]  = iniPosY[i] + h/6 *( l1y[i] + 2*l2y[i] + 2*l3y[i] + l4y[i]);
+                                  iniPosZ[i+1]  = iniPosZ[i] + h/6 *( l1z[i] + 2*l2z[i] + 2*l3z[i] + l4z[i]);
+
+                                  secPosX[i+1] =  secPosX[i] + h/6 *( l1x[i] + 2*l2x[i] + 2*l3x[i] + l4x[i]);
+                                  secPosY[i+1]  = secPosY[i] + h/6 *( l1y[i] + 2*l2y[i] + 2*l3y[i] + l4y[i]);
+                                  secPosZ[i+1]  = secPosZ[i] + h/6 *( l1z[i] + 2*l2z[i] + 2*l3z[i] + l4z[i]);
+
+
+                                  t1[i+1]= t1[i] + h;
+
+                                 // std::cout<<iniPosZ[i]<< " "<<iniPosX[i]<<" "<< iniPosY[i] << " " << endl << endl;
+                                  //std::cout<<secPosZ[i]<< " "<<secPosX[i]<<" "<< secPosY[i] << " " << endl << endl;
+
+
+                                  iniPx1[i] = iniPx1[i+1];
+                                  iniPz1[i] = iniPz1[i+1];
+                                  iniPy1[i] = iniPy1[i+1];
+
+                                  iniPosX[i] = iniPosX[i+1];
+                                  iniPosZ[i] = iniPosZ[i+1];
+                                  iniPosY[i] = iniPosY[i+1];
+
+                                  secPosX[i] = secPosX[i+1];
+                                  secPosZ[i] = secPosZ[i+1];
+                                  secPosY[i] = secPosY[i+1];
+
+                                  t1[i] = t1[i+1];
+                                    // kx_vs_ky->Fill(iniPosX[i], iniPosY[i]);
                                }
+                               c2->cd(1);
+                               TGraph *gl1  = new TGraph(n,secPosX,secPosY);
+                               gl1->Draw("APL*");
 
+
+
+
+
+
+                               // note: this macro draws graphs with different x- and y- axes ranges
+
+                               auto c0 = new TCanvas("c0","multigraph L3",200,10,700,500);
+ 
+                               auto mg = new TMultiGraph();
+ 
+                               auto gr1 = new TGraph(n,iniPosX,iniPosY); gr1->SetLineColor(kBlue);
+                               auto gr2 = new TGraph(n,secPosX,secPosY); gr2->SetLineColor(kRed);
+
+
+                               mg->Add(gr2); gr2->SetTitle("cluster1")    ; gr2->SetLineWidth(3);
+                               mg->Add(gr1); gr1->SetTitle("cluster2")  ; gr1->SetLineWidth(3);
+ 
+                               mg->SetTitle("Multi-graph Title; X-axis Title; Y-axis Title");
+ 
+                               mg->Draw("APL*");
+ 
+                               mg->GetHistogram()->GetXaxis()->SetRangeUser(0.,16);
+                               gPad->Modified();
+                               gPad->Update();
+
+                               auto leg = new TLegend(.75,.80,.95,.55);
+                               leg->SetFillColor(0);
+                               leg->SetTextSize(0.036);
+                               leg->AddEntry(gr1,"cluster1 position","l");
+                               leg->AddEntry(gr2,"cluster2 position","l");
+                               leg->Draw();
+                             
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+
+                               // put the graphs in the multigraph
+                             // TMultiGraph  *mg  = new TMultiGraph();
+                                TMultiGraph* mg = new TMultiGraph();
+                                mg->Add(gr1);
+                                mg->Add(gr2);
+
+                                mg->SetTitle("My Graph");
+                                mg->GetXaxis()->SetTitle("x");
+
+                                gr1->GetYaxis()->SetTitle("y");
+                                gr1->GetYaxis()->SetRangeUser(7, 9);
+
+                                gr2->GetYaxis()->SetTitle("y2");
+                                gr2->GetYaxis()->SetRangeUser(16, 17);
+
+    
+                                mg->Draw("AP");
+
+
+                             // draw the multigraph
+                             //mg->Draw("AP*");
+                               // create a multigraph and draw it
+                               TMultiGraph  *mg  = new TMultiGraph();
+                               mg->Add(gr1);
+                               mg->Add(gr2);
+                               mg->Draw("AP*");
+
+
+                               TGraph *gr1  = new TGraph(n,x1,y1);
+                               TGraph *gr2  = new TGraph(n,x2,y2);
+                               gr2->SetMarkerColor(2);
+                               //gr2->SetMarkerStyle(21);
+
+                               // create a multigraph and draw it
+                               TMultiGraph  *mg  = new TMultiGraph();
+                               mg->Add(gr1);
+                               mg->Add(gr2);
+                               mg->Draw("AP*");
 
                                  // Define the size of the matrix
                                Int_t rows = 6; // the number of state variables
@@ -1160,6 +1294,7 @@ cout<<"+----------------+"<<endl;
                                TMatrixD IplusFt (6,6);
                                IplusFt.Zero();
                                TMatrixD Ft(6,6);
+                               Double_t h[cols], p[cols];
 
                                for (int j = 0; j < 4; j++) {
                                    IplusFt = F1* dt_2;
@@ -1181,12 +1316,23 @@ cout<<"+----------------+"<<endl;
 
                                    // Multiply propagator matrix with state vector to get time derivative of state vector
                                    TMatrixD state_dot_vector1 = F1 * state_vector1;
-                                   //X_vs_Y->Fill(state_dot_vector1(0,0), state_dot_vector1(1,0));
-                                   //F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
-                                   // state_dot_vector.Print();
+                                   X_vs_Y->Fill(state_dot_vector1(0,0), state_dot_vector1(1,0));
+                                   //h[k] = state_dot_vector1(0,0);
+                                   //p[k] = state_dot_vector1(1,0); 
                                }
+                               c2->cd(2);
 
+                               TGraph *gr2  = new TGraph(n,x1,y1);
+                               TGraph *gr3  = new TGraph(cols,h,p);
+                               gr3->SetMarkerColor(2);
+                               //gr2->SetMarkerStyle(21);
 
+                               // create a multigraph and draw it
+                               TMultiGraph  *mg1  = new TMultiGraph();
+                               mg1->Add(gr2);
+                               mg1->Add(gr3);
+                               mg1->Draw("AP*");
+*/
 
 
 
@@ -1229,7 +1375,7 @@ cout<<"+----------------+"<<endl;
                              kx_vs_ky->Fill(output(0,0), output(1,0));
                            }*/
 
-                           }
+                            }
 
 
 
@@ -1243,7 +1389,28 @@ cout<<"+----------------+"<<endl;
 
         }
 
+
 /*
+c2->cd(2);
+
+//        TGraph *gr1  = new TGraph(n,iniPosX,iniPosY);
+  //      TGraph *gr2  = new TGraph(n,secPosX,secPosX);
+        gr2->SetMarkerColor(2);
+        //gr2->SetMarkerStyle(21);
+
+        // create a multigraph and draw it
+        TMultiGraph  *mg  = new TMultiGraph();
+        mg->Add(gr1);
+        mg->Add(gr2);
+        mg->Draw("AP*");
+
+
+
+
+
+
+
+
 c2->cd(1);
         X_vs_Y->SetMarkerStyle(21);
         X_vs_Y->SetMarkerSize(0.3);
@@ -1252,7 +1419,6 @@ c2->cd(1);
         X_vs_Y->SetMarkerColor(kBlack);
         X_vs_Y->Draw();
 
-*/
 c2->cd(2);
        
 
@@ -1268,19 +1434,19 @@ c2->cd(2);
         //kx_vs_ky->GetYaxis()->SetRangeUser(0, 250);
         
 
-  //      kx_vs_ky->Draw("");
+        kx_vs_ky->Draw("");
 
         X_vs_Y->Draw("same");
 
 
 
-/*
+
 c2->cd(3);
         phi_pattern->SetMarkerStyle(15);
         phi_pattern->SetMarkerSize(0.3);
         phi_pattern->Draw();
-*/
 
+*/
         return(0);
 
 
