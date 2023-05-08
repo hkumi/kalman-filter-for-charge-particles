@@ -26,7 +26,6 @@
 using namespace std;
 
 
-
 void Get_Energy(Double_t M,Double_t IZ,Double_t BRHO,Double_t &E);
 
 
@@ -39,9 +38,6 @@ std::vector<AtHitCluster> *GetHitClusterArray() {
 
 
  }
-
-
-
 
 
 
@@ -115,6 +111,8 @@ Double_t GetEnergy(Double_t vx, Double_t vy, Double_t vz){
     Energy = (gamma1-1)*931.494028;
     return Energy;
 }
+
+
 Double_t StoppingPower(Double_t Energy){
     Double_t stpSim;
     TGraph* eLossCurve = new TGraph();
@@ -516,6 +514,7 @@ Double_t GetPhi(Double_t x1, Double_t y1, Double_t x2, Double_t y2) {
          Double_t phiDeg;
          if (phi < 0){
             phiDeg = 360+ phi*TMath::RadToDeg();
+            return phiDeg;
             }  else {
                     phiDeg = phi*TMath::RadToDeg();
             }
@@ -915,7 +914,7 @@ cout<<"+----------------+"<<endl;
                        }
                        Double_t theta = track.GetGeoTheta();
                        Double_t rad   = track.GetGeoRadius();
-                       Double_t B_f = -3.0;                         //in Tesla.
+                       Double_t B_f = 3.0;                         //in Tesla.
                        Double_t brho = B_f * rad / TMath::Sin(theta) / 1000.0;     //in Tm.
                        Double_t ener = 0;
                        Double_t Am = 1.007; // atomic mass of proton in u.
@@ -935,7 +934,6 @@ cout<<"+----------------+"<<endl;
                        if (goodTrack.GetTrackID() != -1){
 
                           Double_t phi;
-                        //  auto hitClusterArray = goodtrack.GetHitClusterArray();
 
                            // Needs to be reversed back for multifit
                           std::reverse(hitClusterArray->begin(), hitClusterArray->end());
@@ -972,7 +970,7 @@ cout<<"+----------------+"<<endl;
                              phiDeg = phi*TMath::RadToDeg();
                           }
                            // TMath::DegToRad())
- 
+
                           iniPx = p * TMath::Cos(phiDeg*TMath::DegToRad()) * TMath::Sin(theta);        // in MeV/c
                           iniPy = p * TMath::Sin(phiDeg*TMath::DegToRad()) * TMath::Sin(theta);              // in MeV/c
                           iniPz = p * TMath::Cos(theta);                                              // in MeV/c
@@ -1034,7 +1032,7 @@ cout<<"+----------------+"<<endl;
                             // std::cout<< "Processing event " << i  << "with " <<  << " clusters" << endl;
                              //std::cout<< "px:" <<iniPx1[0] << "py:" << iniPy1[0] << "pz:" << iniPz1[0] << endl<<endl;
 
-                             Int_t n = 1000;
+                             Int_t n = 100;
                              Double_t t1,posx1[n],posy1[n],posx2[n],posy2[n];
                              Double_t l1x[n],l2x[n],l3x[n],l4x[n];
                              Double_t l1y[n],l2y[n],l3y[n],l4y[n];
@@ -1050,64 +1048,73 @@ cout<<"+----------------+"<<endl;
                              //while(Energy1>0.1){
 
                                // std::cout << i  << " "<< iniPx1  << " "<< iniPy1 << endl << endl;
-                             for(pp = 0; pp<n; pp++){
-                                l1x[pp] = fx(t1,iniPx1);
-                                l1y[pp] = fy(t1,iniPy1);
-                                l1z[pp] = fz(t1,iniPz1);
-                                //std::cout << i  << " "<< iniPosX[i]  << " "<< iniPosY[i] << endl << endl;
+                             for (auto& cluster: *hitClusterArray){
+                                 auto  clusterPosition = cluster.GetPosition();
+                                 Double_t clusterPosX = clusterPosition.X();
+                                 Double_t clusterPosY = clusterPosition.Y();
+                                 Double_t clusterPosZ = clusterPosition.Z();
+                                 std::cout<<clusterPosX << " " << clusterPosY << " "<< clusterPosZ <<endl;
+                                 
 
-                                l1vx[pp] = dxdt(t1,iniPx1,iniPy1,iniPz1);
-                                l1vy[pp] = dydt(t1,iniPx1,iniPy1,iniPz1);
-                                l1vz[pp] = dzdt(t1,iniPx1,iniPy1,iniPz1);
+                                 for(pp = 0; pp<n; pp++){
+                                    l1x[pp] = fx(t1,iniPx1);
+                                    l1y[pp] = fy(t1,iniPy1);
+                                    l1z[pp] = fz(t1,iniPz1);
+                                    //std::cout << i  << " "<< iniPosX[i]  << " "<< iniPosY[i] << endl << endl;
 
-                                l2x[pp] = fx(t1+h*0.5,iniPx1+0.5*h*l1x[pp]);
-                                l2y[pp] = fy(t1+h*0.5,iniPy1+0.5*h*l1y[pp]);
-                                l2z[pp] = fz(t1+h*0.5,iniPz1+0.5*h*l1z[pp]);
+                                    l1vx[pp] = dxdt(t1,iniPx1,iniPy1,iniPz1);
+                                    l1vy[pp] = dydt(t1,iniPx1,iniPy1,iniPz1);
+                                    l1vz[pp] = dzdt(t1,iniPx1,iniPy1,iniPz1);
 
-                                l2vx[pp] = dxdt(t1+h*0.5,iniPx1+l1vx[pp]*0.5*h,iniPy1+l1vy[pp]*h*0.5,iniPz1+l1vz[pp]*h*0.5);
-                                l2vy[pp] = dydt(t1+h*0.5,iniPx1+l1vx[pp]*h*0.5, iniPy1+l1vy[pp]*h*0.5,iniPz1+l1vz[pp]*h*0.5);
-                                l2vz[pp] = dzdt(t1+h*0.5,iniPx1+l1vx[pp]*h*0.5, iniPy1+l1vy[pp]*h*0.5, iniPz1+l1vz[pp]*h*0.5);
+                                    l2x[pp] = fx(t1+h*0.5,iniPx1+0.5*h*l1x[pp]);
+                                    l2y[pp] = fy(t1+h*0.5,iniPy1+0.5*h*l1y[pp]);
+                                    l2z[pp] = fz(t1+h*0.5,iniPz1+0.5*h*l1z[pp]);
 
-
-                                l3x[pp] = fx(t1+h*0.5,iniPx1+0.5*h*l2x[pp]);
-                                l3y[pp] = fy(t1+h*0.5,iniPy1+0.5*h*l2y[pp]);
-                                l3z[pp] = fz(t1+h*0.5,iniPz1+0.5*h*l2z[pp]);
-
-                                l3vx[pp] = dxdt(t1+h*0.5,iniPx1+l2vx[pp]*0.5*h,iniPy1+l2vy[pp]*h*0.5,iniPz1 + l2vz[pp]*h*0.5);
-                                l3vy[pp] = dydt(t1+h*0.5,iniPx1+l2vx[pp]*h*0.5, iniPy1+l2vy[pp]*h*0.5,iniPz1 +l2vz[pp]*h*0.5);
-                                l3vz[pp] = dzdt(t1+h*0.5,iniPx1+l2vx[pp]*h*0.5, iniPy1+l2vy[pp]*h*0.5, iniPz1 + l2vz[pp]*h*0.5);
-
-                                l4x[pp] = fx(t1+h,iniPx1+l3x[pp]*h);
-                                l4y[pp] = fy(t1+h,iniPy1+l3y[pp]*h);
-                                l4z[pp] = fz(t1+h,iniPz1+l3z[pp]*h);
-
-                                l4vx[pp] = dxdt(t1+h,iniPx1+l3vx[pp]*h,iniPy1+l3vy[pp]*h,iniPz1+l3vz[pp]*h);
-                                l4vy[pp] = dydt(t1+h,iniPx1+l3vx[pp]*h,iniPy1+l3vy[pp]*h,iniPz1+l3vz[pp]*h);
-                                l4vz[pp] = dzdt(t1+h,iniPx1+l3vx[pp]*h,iniPy1+l3vy[pp]*h,iniPz1+l3vz[pp]*h);
+                                    l2vx[pp] = dxdt(t1+h*0.5,iniPx1+l1vx[pp]*0.5*h,iniPy1+l1vy[pp]*h*0.5,iniPz1+l1vz[pp]*h*0.5);
+                                    l2vy[pp] = dydt(t1+h*0.5,iniPx1+l1vx[pp]*h*0.5, iniPy1+l1vy[pp]*h*0.5,iniPz1+l1vz[pp]*h*0.5);
+                                    l2vz[pp] = dzdt(t1+h*0.5,iniPx1+l1vx[pp]*h*0.5, iniPy1+l1vy[pp]*h*0.5, iniPz1+l1vz[pp]*h*0.5);
 
 
-                                iniPx1 = iniPx1 + h/6 *( l1vx[pp] + 2*l2vx[pp] + 2*l3vx[pp] + l4vx[pp]);
-                                iniPy1  = iniPy1 + h/6 *(l1vy[pp] + 2*l2vy[pp] + 2*l3vy[pp] + l4vy[pp]);
-                                iniPz1  = iniPz1 + h/6 *(l1vz[pp] + 2*l2vz[pp] + 2*l3vz[pp] + l4vz[pp]);
+                                    l3x[pp] = fx(t1+h*0.5,iniPx1+0.5*h*l2x[pp]);
+                                    l3y[pp] = fy(t1+h*0.5,iniPy1+0.5*h*l2y[pp]);
+                                    l3z[pp] = fz(t1+h*0.5,iniPz1+0.5*h*l2z[pp]);
 
-                                iniPosX = iniPosX + h/6 *( l1x[pp]  + 2*l2x[pp] + 2*l3x[pp] + l4x[pp]);
-                                iniPosY  = iniPosY + h/6 *( l1y[pp] + 2*l2y[pp] + 2*l3y[pp] + l4y[pp]);
-                                iniPosZ  = iniPosZ + h/6 *( l1z[pp] + 2*l2z[pp] + 2*l3z[pp] + l4z[pp]);
+                                    l3vx[pp] = dxdt(t1+h*0.5,iniPx1+l2vx[pp]*0.5*h,iniPy1+l2vy[pp]*h*0.5,iniPz1 + l2vz[pp]*h*0.5);
+                                    l3vy[pp] = dydt(t1+h*0.5,iniPx1+l2vx[pp]*h*0.5, iniPy1+l2vy[pp]*h*0.5,iniPz1 +l2vz[pp]*h*0.5);
+                                    l3vz[pp] = dzdt(t1+h*0.5,iniPx1+l2vx[pp]*h*0.5, iniPy1+l2vy[pp]*h*0.5, iniPz1 + l2vz[pp]*h*0.5);
 
-                                secPosX =  secPosX + h/6 *( l1x[pp] + 2*l2x[pp] + 2*l3x[pp] + l4x[pp]);
-                                secPosY  = secPosY + h/6 *( l1y[pp] + 2*l2y[pp] + 2*l3y[pp] + l4y[pp]);
-                                secPosZ  = secPosZ + h/6 *( l1z[pp] + 2*l2z[pp] + 2*l3z[pp] + l4z[pp]);
+                                    l4x[pp] = fx(t1+h,iniPx1+l3x[pp]*h);
+                                    l4y[pp] = fy(t1+h,iniPy1+l3y[pp]*h);
+                                    l4z[pp] = fz(t1+h,iniPz1+l3z[pp]*h);
+
+                                    l4vx[pp] = dxdt(t1+h,iniPx1+l3vx[pp]*h,iniPy1+l3vy[pp]*h,iniPz1+l3vz[pp]*h);
+                                    l4vy[pp] = dydt(t1+h,iniPx1+l3vx[pp]*h,iniPy1+l3vy[pp]*h,iniPz1+l3vz[pp]*h);
+                                    l4vz[pp] = dzdt(t1+h,iniPx1+l3vx[pp]*h,iniPy1+l3vy[pp]*h,iniPz1+l3vz[pp]*h);
 
 
-                                t1 = t1 + h;
+                                    iniPx1 = iniPx1 + h/6 *( l1vx[pp] + 2*l2vx[pp] + 2*l3vx[pp] + l4vx[pp]);
+                                    iniPy1  = iniPy1 + h/6 *(l1vy[pp] + 2*l2vy[pp] + 2*l3vy[pp] + l4vy[pp]);
+                                    iniPz1  = iniPz1 + h/6 *(l1vz[pp] + 2*l2vz[pp] + 2*l3vz[pp] + l4vz[pp]);
+
+                                    iniPosX = iniPosX + h/6 *( l1x[pp]  + 2*l2x[pp] + 2*l3x[pp] + l4x[pp]);
+                                    iniPosY  = iniPosY + h/6 *( l1y[pp] + 2*l2y[pp] + 2*l3y[pp] + l4y[pp]);
+                                    iniPosZ  = iniPosZ + h/6 *( l1z[pp] + 2*l2z[pp] + 2*l3z[pp] + l4z[pp]);
+
+
+                                    t1 = t1 + h;
+                                    // Update the initial conditions for the next cluster
+                                    iniPosX = clusterPosX;
+                                    iniPosY = clusterPosY;
+                                    iniPosZ = clusterPosZ;
 
                                 // std::cout<<iniPosZ[i]<< " "<<iniPosX[i]<<" "<< iniPosY[i] << " " << endl << endl;
                                 //std::cout<<secPosZ[i]<< " "<<secPosX[i]<<" "<< secPosY[i] << " " << endl << endl;
-                                kx_vs_ky->Fill(iniPosX, iniPosY);
+                                    kx_vs_ky->Fill(iniPosX, iniPosY);
                                 //Energy1 = GetEnergy(iniPx1,iniPy1,iniPz1);
                                 //pp+=1;
                                // std::cout<<Energy1<<endl<<endl;
 
+                                    } 
                              }
 /*
 
