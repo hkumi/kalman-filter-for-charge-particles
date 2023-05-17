@@ -898,6 +898,7 @@ cout<<"+----------------+"<<endl;
                            //std::cout <<track.GetTrackID() << endl;
                           continue;
                        }
+
                        Double_t theta = track.GetGeoTheta();
                        Double_t rad   = track.GetGeoRadius();
                        Double_t B_f = 3.0;                         //in Tesla.
@@ -960,20 +961,6 @@ cout<<"+----------------+"<<endl;
                           iniVz1 = (iniPz * 5.344286e-22)/m;
                          // cout<< iniVx1<<endl<<endl;
 /*
-                          auto direction = secondPosition - firstPosition;
-                          //std::cout<<direction.X()<<endl;
-                          TVector3 momentum(iniPx, iniPy, iniPz);
-                          TVector3 trackdirection(direction.X(), direction.Y(), direction.Z());
-                          momentum = momentum.Unit();
-                          Double_t plane1 = GetVirtualPlane(iniPosX, iniPosY, iniPosY, momentum.X(), momentum.Y(), momentum.Z());
-                          Double_t plane2 = GetVirtualPlane(secPosX, secPosY, secPosY, momentum.X(), momentum.Y(), momentum.Z());
-                          // Calculate distance between plane1 and plane2
-                          Double_t dist = fabs(plane2 - plane1);
-
-
-                          // Define the measurement plane
-                   //      TPlane measurementPlane(momentum, TVector3(iniPosX, iniPosY, (-d/momentum.Z())));
-*/
                          // TMatrixD initial_state(6, 1);
                          // initial_state(0, 0) = iniPosX[0];
                         //  initial_state(1, 0) = iniPosY[0];
@@ -981,7 +968,7 @@ cout<<"+----------------+"<<endl;
                          // initial_state(3, 0) = iniPx1[0];
                          // initial_state(4, 0) = iniPy1[0];
                           //initial_state(5, 0) = iniPz1[0];
-
+*/
 
                           /*----------
                             Looping over all the clusters in
@@ -998,7 +985,6 @@ cout<<"+----------------+"<<endl;
 
                           TMatrixD Q(6,6);
                           generateGaussianNoise(Q); // Generates a 6x6 matrix of Gaussian noise with mean 0 and standard deviation 1
-                          //Q.Print();
 
                           TMatrixD P(6,6);
                           Ini_P(P);
@@ -1006,44 +992,42 @@ cout<<"+----------------+"<<endl;
                           TMatrixD H_1(2,6);
                           // Get the measurement matrix
                           GetMeasurementMatrix(H_1);
-                          //H_1.Print();
-
+ 
                           // Error in Measurement.
                           TMatrixD R_1(2,2);
                           generateMeasurementNoise(R_1);
-                          //R_1.Print();
 
                           std::vector<int> eventNumbers = {99};
                           // Iterate over event numbers and access the corresponding events
                           if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
 
-                             Int_t n = int(secPosX-iniPosX);
-                             std::cout << n << std::endl;
+                             Int_t n1 = int(secPosX-iniPosX);
+                             std::cout << n1 << std::endl;
                              Double_t t1=0.0;
-                             Double_t l1x[n],l2x[n],l3x[n],l4x[n];
-                             Double_t l1y[n],l2y[n],l3y[n],l4y[n];
-                             Double_t l1z[n],l2z[n],l3z[n],l4z[n];
+                             Double_t l1x[n1],l2x[n1],l3x[n1],l4x[n1];
+                             Double_t l1y[n1],l2y[n1],l3y[n1],l4y[n1];
+                             Double_t l1z[n1],l2z[n1],l3z[n1],l4z[n1];
 
-                             Double_t l1vx[n],l2vx[n],l3vx[n],l4vx[n];
-                             Double_t l1vy[n],l2vy[n],l3vy[n],l4vy[n];
-                             Double_t l1vz[n],l2vz[n],l3vz[n],l4vz[n];
-                            // std::cout << n1 <<endl;
+                             Double_t l1vx[n1],l2vx[n1],l3vx[n1],l4vx[n1];
+                             Double_t l1vy[n1],l2vy[n1],l3vy[n1],l4vy[n1];
+                             Double_t l1vz[n1],l2vz[n1],l3vz[n1],l4vz[n1];
+
                              Int_t pp;
 
                              int clusterCount = 0;
                              for (auto iCluster =  0; iCluster<hitClusterArray->size()-1; ++iCluster){
 
-                                     auto cluster = hitClusterArray->at(iCluster+1);
-                                     auto pos = cluster.GetPosition();
+                                 auto cluster = hitClusterArray->at(iCluster+1);
+                                 auto pos = cluster.GetPosition();
 
-                                     Double_t clusterPosX = pos.X();
-                                     Double_t clusterPosY = pos.Y();
-                                     Double_t clusterPosZ = pos.Z();
-                                     X_vs_Y->Fill(iniPosX, iniPosY);
+                                 Double_t clusterPosX = pos.X();
+                                 Double_t clusterPosY = pos.Y();
+                                 Double_t clusterPosZ = pos.Z();
+                                 X_vs_Y->Fill(iniPosX, iniPosY);
 
 
 
-                                 for (pp = 0; pp < n; pp++) {
+                                 for (pp = 0; pp < n1; pp++) {
 
                                      l1x[pp] = fx(t1,iniVx1);
                                      l1y[pp] = fy(t1,iniVy1);
@@ -1078,11 +1062,11 @@ cout<<"+----------------+"<<endl;
                                      l4vz[pp] = dzdt(t1+h,iniVx1+l3vx[pp]*h,iniVy1+l3vy[pp]*h,iniVz1+l3vz[pp]*h);
 
 
-                                     iniVx1 = iniVx1 + h/6 *( l1vx[pp] + 2*l2vx[pp] + 2*l3vx[pp] + l4vx[pp]);
+                                     iniVx1 =  iniVx1 + h/6 *( l1vx[pp] + 2*l2vx[pp] + 2*l3vx[pp] + l4vx[pp]);
                                      iniVy1  = iniVy1 + h/6 *(l1vy[pp] + 2*l2vy[pp] + 2*l3vy[pp] + l4vy[pp]);
                                      iniVz1  = iniVz1 + h/6 *(l1vz[pp] + 2*l2vz[pp] + 2*l3vz[pp] + l4vz[pp]);
 
-                                     iniPosX = iniPosX + h/6 *( l1x[pp]  + 2*l2x[pp] + 2*l3x[pp] + l4x[pp]);
+                                     iniPosX =  iniPosX + h/6 *( l1x[pp]  + 2*l2x[pp] + 2*l3x[pp] + l4x[pp]);
                                      iniPosY  = iniPosY + h/6 *( l1y[pp] + 2*l2y[pp] + 2*l3y[pp] + l4y[pp]);
                                      iniPosZ  = iniPosZ + h/6 *( l1z[pp] + 2*l2z[pp] + 2*l3z[pp] + l4z[pp]);
 
@@ -1107,7 +1091,7 @@ cout<<"+----------------+"<<endl;
                                  iniPosX = clusterPosX;
                                  iniPosY = clusterPosY;
                                  iniPosZ = clusterPosZ;
- 
+
 
                                  ++clusterCount;
                                  if (clusterCount > 2) {
@@ -1161,7 +1145,7 @@ cout<<"+----------------+"<<endl;
 
                                  // Define the size of the matrix
                                Int_t rows = 6; // the number of state variables
-                               Int_t cols = hitClusterArray->size(); // the number of steptime.
+                               Int_t cols = n1; // the number of steptime.
 
                                // Define matrix to hold state vectors
                                TMatrixD  state_matrix1(rows,cols);
