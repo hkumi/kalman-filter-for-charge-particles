@@ -960,15 +960,24 @@ cout<<"+----------------+"<<endl;
                           iniVy1 = (iniPy * 5.344286e-22)/m;
                           iniVz1 = (iniPz * 5.344286e-22)/m;
                          // cout<< iniVx1<<endl<<endl;
-/*
-                         // TMatrixD initial_state(6, 1);
-                         // initial_state(0, 0) = iniPosX[0];
-                        //  initial_state(1, 0) = iniPosY[0];
-                         // initial_state(2, 0) = iniPosZ[0];
-                         // initial_state(3, 0) = iniPx1[0];
-                         // initial_state(4, 0) = iniPy1[0];
-                          //initial_state(5, 0) = iniPz1[0];
-*/
+
+                          TMatrixD initial_state(6, 1);
+                          initial_state(0, 0) = iniPosX;
+                          initial_state(1, 0) = iniPosY;
+                          initial_state(2, 0) = iniPosZ;
+                          initial_state(3, 0) = iniVx1;
+                          initial_state(4, 0) = iniVy1;
+                          initial_state(5, 0) = iniVz1;
+
+                          TMatrixD initial_state1(6, 1);
+                          initial_state1(0, 0) = secPosX;
+                          initial_state1(1, 0) = secPosY;
+                          initial_state1(2, 0) = secPosZ;
+                          initial_state1(3, 0) = iniVx1;
+                          initial_state1(4, 0) = iniVy1;
+                          initial_state1(5, 0) = iniVz1;
+
+
 
                           /*----------
                             Looping over all the clusters in
@@ -982,6 +991,10 @@ cout<<"+----------------+"<<endl;
                           TMatrixD C_1(2,2);
                           TMatrixD Z_1(2,1);
                           TMatrixD x_estimate(6,1);
+
+                          TMatrixD Jacobi_matrix1(6,6);
+                          TMatrixD I(6,6);
+                          TMatrixD F1(6,6);
 
                           TMatrixD Q(6,6);
                           generateGaussianNoise(Q); // Generates a 6x6 matrix of Gaussian noise with mean 0 and standard deviation 1
@@ -1002,7 +1015,7 @@ cout<<"+----------------+"<<endl;
                           if (std::find(eventNumbers.begin(), eventNumbers.end(), i) != eventNumbers.end()) {
 
                              Int_t n1 = int(secPosX-iniPosX);
-                             std::cout << n1 << std::endl;
+                            // std::cout << n1 << std::endl;
                              Double_t t1=0.0;
                              Double_t l1x[n1],l2x[n1],l3x[n1],l4x[n1];
                              Double_t l1y[n1],l2y[n1],l3y[n1],l4y[n1];
@@ -1011,6 +1024,14 @@ cout<<"+----------------+"<<endl;
                              Double_t l1vx[n1],l2vx[n1],l3vx[n1],l4vx[n1];
                              Double_t l1vy[n1],l2vy[n1],l3vy[n1],l4vy[n1];
                              Double_t l1vz[n1],l2vz[n1],l3vz[n1],l4vz[n1];
+
+                             Int_t rows = 6; // the number of state variables
+                             Int_t cols = n1; // the number of steptime.
+
+
+                             // Define matrix to hold state vectors
+                             TMatrixD  state_matrix1(6,n1);
+
 
                              Int_t pp;
 
@@ -1024,8 +1045,6 @@ cout<<"+----------------+"<<endl;
                                  Double_t clusterPosY = pos.Y();
                                  Double_t clusterPosZ = pos.Z();
                                  X_vs_Y->Fill(iniPosX, iniPosY);
-
-
 
                                  for (pp = 0; pp < n1; pp++) {
 
@@ -1072,19 +1091,63 @@ cout<<"+----------------+"<<endl;
 
 
                                      // Update the cluster positions to reach the next cluster
-                                     iniPosX = iniPosX + (clusterPosX - iniPosX) / n;
-                                     iniPosY = iniPosY + (clusterPosY - iniPosY) / n;
-                                     iniPosZ = iniPosZ + (clusterPosZ - iniPosZ) / n;
+                                     iniPosX = iniPosX + (clusterPosX - iniPosX) / n1;
+                                     iniPosY = iniPosY + (clusterPosY - iniPosY) / n1;
+                                     iniPosZ = iniPosZ + (clusterPosZ - iniPosZ) / n1;
+
+                                     state_matrix1(0,pp) = iniPosX;
+                                     state_matrix1(1,pp) = iniPosY;
+                                     state_matrix1(2,pp) = iniPosZ;
+                                     state_matrix1(3,pp) = iniVx1;
+                                     state_matrix1(4,pp) = iniVy1;
+                                     state_matrix1(5,pp) = iniVz1;
 
 
 
-                                     kx_vs_ky->Fill(iniPosX, iniPosY);
+
+                                  //   kx_vs_ky->Fill(iniPosX, iniPosY);
 
                                      t1 = t1 + h;
 
+                                 }
+                                 Jacobi_matrice(Jacobi_matrix1);
 
+                                 I_matrix(I);
+
+                                 // Calculate propagator matrix using intermediate matrices
+                                 // Initialize F as identity matrix
+                                 F1.UnitMatrix();
+
+                                 // Compute F1, F2, F3, F4
+                                 Double_t dt_2 = 1e-10;
+                                 TMatrixD IplusFt (6,6);
+                                 IplusFt.Zero();
+                                 TMatrixD Ft(6,6);
+                                 Double_t h[cols], p[cols];
+
+                                 for (int j = 0; j < 4; j++) {
+                                     IplusFt = F1* dt_2;
+                                     Ft  = (1e-10)*Jacobi_matrix1*IplusFt;
+                                     F1     += Ft *((j==0 || j==3) ?  1.0/6.0 : 1.0/3.0);
 
                                  }
+
+                                 // Define matrix to hold time derivatives of state vectors
+                                 TMatrixD  state_dot_matrix1(rows,cols);
+
+                                 // Calculate time derivatives of state vectors
+                                 for (int k = 0; k < cols; k++) {
+                                     // Extract state vector at time t. 
+                                     TMatrixD state_vector1(6,1);
+                                     for (int j = 0; j < 6; j++) {
+                                         state_vector1(j,0) = state_matrix1(j,k);
+                                     }
+
+                                     // Multiply propagator matrix with state vector to get time derivative of state vector
+                                     TMatrixD state_dot_vector1 = F1 * state_vector1;
+                                    // X_vs_Y->Fill(state_dot_vector1(0,0), state_dot_vector1(1,0)); 
+                                 }
+
 
 
                                  //Update the initial conditions for the next cluster
@@ -1095,173 +1158,57 @@ cout<<"+----------------+"<<endl;
 
                                  ++clusterCount;
                                  if (clusterCount > 2) {
-                                     break; // stop iterating over clusters after the second one
+                                    break; // stop iterating over clusters after the second one
                                  }
 
                              }
 
 
+                           auto ik = 1;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-
-
-                                 // Define the size of the matrix
-                               Int_t rows = 6; // the number of state variables
-                               Int_t cols = n1; // the number of steptime.
-
-                               // Define matrix to hold state vectors
-                               TMatrixD  state_matrix1(rows,cols);
-                               Double_t m = 1.6726*TMath::Power(10,-27);       // mass of the particle in kg
-
-
-                               // Fill in matrix with state vectors
-                               for (int j = 0; j < cols; j++) {
-                                   state_matrix1(0,j) = iniPosX[j];
-                                   state_matrix1(1,j) = iniPosY[j];
-                                   state_matrix1(2,j) = iniPosZ[j];
-                                   state_matrix1(3,j) = iniPx1[j];
-                                   state_matrix1(4,j) = iniPy1[j];
-                                   state_matrix1(5,j) = iniPz1[j];
-                               }
-
-
-                               TMatrixD Jacobi_matrix1(6,6);
-                               Jacobi_matrice(Jacobi_matrix1);
-                               //Jacobi_matrix.Print();
-
-
-                               //Identity matrix.
-                               TMatrixD I(6,6);
-                               I_matrix(I);
-                               //I.Print();
-
-                               // Calculate propagator matrix using intermediate matrices
-                               // Initialize F as identity matrix
-                               TMatrixD F1(6,6);
-                               F1.UnitMatrix();
-                               // Compute F1, F2, F3, F4
-                               Double_t dt_2 = 1e-10;
-                               TMatrixD IplusFt (6,6);
-                               IplusFt.Zero();
-                               TMatrixD Ft(6,6);
-                               Double_t h[cols], p[cols];
-
-                               for (int j = 0; j < 4; j++) {
-                                   IplusFt = F1* dt_2;
-                                   Ft  = (1e-10)*Jacobi_matrix1*IplusFt;
-                                   F1     += Ft *((j==0 || j==3) ?  1.0/6.0 : 1.0/3.0);
-                                   //F.Print();
-                               }
-
-                               // Define matrix to hold time derivatives of state vectors
-                               TMatrixD  state_dot_matrix1(rows,cols);
-
-                               // Calculate time derivatives of state vectors
-                               for (int k = 0; k < cols; k++) {
-                                   // Extract state vector at time t. 
-                                   TMatrixD state_vector1(6,1);
-                                   for (int j = 0; j < 6; j++) {
-                                       state_vector1(j,0) = state_matrix1(j,k);
-                                   }
-
-                                   // Multiply propagator matrix with state vector to get time derivative of state vector
-                                   TMatrixD state_dot_vector1 = F1 * state_vector1;
-                                   X_vs_Y->Fill(state_dot_vector1(0,0), state_dot_vector1(1,0));
-                                   //h[k] = state_dot_vector1(0,0);
-                                   //p[k] = state_dot_vector1(1,0); 
-                               }
-                               c2->cd(2);
-
-                               TGraph *gr2  = new TGraph(n,x1,y1);
-                               TGraph *gr3  = new TGraph(cols,h,p);
-                               gr3->SetMarkerColor(2);
-                               //gr2->SetMarkerStyle(21);
-
-                               // create a multigraph and draw it
-                               TMultiGraph  *mg1  = new TMultiGraph();
-                               mg1->Add(gr2);
-                               mg1->Add(gr3);
-                               mg1->Draw("AP*");
-*/
-
-
-
-
-
-
-                          /* for(auto iclus = 0; iclus < hitClusterArray->size(); iclus++){
+                           for (auto iclus = 0; iclus < hitClusterArray->size(); iclus++){
 
                             //  Get the measurements.
-                              auto MeasurementCluster = hitClusterArray->at(iclus);
-                              auto measurements = MeasurementCluster.GetPosition();
-                              Y_1(0,0) = iniPosX[iclus];//measurements.X();
-                              Y_1(1,0) = iniPosY[iclus];//measurements.Y();
-                              //std::cout << x1<<","<<y1<<endl << endl;
+                               auto MeasurementCluster = hitClusterArray->at(iclus);
+                               auto measurements = MeasurementCluster.GetPosition();
+                               Y_1(0,0) = measurements.X();
+                               Y_1(1,0) = measurements.Y();
 
-                              X_vs_Y->Fill(Y_1(0,0),Y_1(1,0));
+                               //Perform Kalman here.
+                               //Initial state predictions for protons.
+                               x_pred = F1 * initial_state ;
+                               P_pred =  (F1 *TMatrixD(P, TMatrixD::kMultTranspose,F1))  + Q;
+
+                               //this updates the  predicted states and the covariances.
+                               K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
+
+                               // Predicted measurement
+                               TMatrixD predictedMeasurement = (H_1 * x_pred);
+
+                               // Residual between predicted and actual measurement
+                               TMatrixD residual = (Y_1 - predictedMeasurement);
+                               x_estimate = x_pred + K * residual;
+
+                               P =(I-K*H_1)*P_pred;
+                               TMatrixD output = H_1 * x_estimate;              // this projects the estimated state into the output.
+                               initial_state = x_estimate;
+                               P.Print();
+
+                               kx_vs_ky->Fill(output(0,0), output(1,0));
+
+                               //Update the initial conditions for the next cluster
+                            //   initial_state  = initial_state1;
+                              // initial_state  = initial_state1;
+                              // initial_state  = initial_state1;
+
+                               ++ik;
+                               if (ik > 2) {
+                                  break; // stop iterating over clusters after the second one
+                               }
 
 
-                            //Perform Kalman here.
-                            //Initial state predictions for protons.
-                             x_pred = F * initial_state ;
-                             P_pred =  (F *TMatrixD(P, TMatrixD::kMultTranspose,F))  + Q;
 
-                             //this updates the  predicted states and the covariances.
-                             K =  TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) *  (H_1 * TMatrixD(P_pred, TMatrixD::kMultTranspose,H_1) + R_1).Invert();
-
-                             // Predicted measurement
-                             TMatrixD predictedMeasurement = (H_1 * x_pred);
-
-                             // Residual between predicted and actual measurement
-                             TMatrixD residual = (Y_1 - predictedMeasurement);
-                             x_estimate = x_pred + K * residual;
-                             //std::cout << "the estimated state:" << endl << endl;
-                            // x_estimate.Print();
-                             P =(I-K*H_1)*P_pred;
-                             TMatrixD output = H_1 * x_estimate;              // this projects the estimated state into the output.
-                             initial_state = x_estimate;
-                             //std::cout << "estimated state:" << endl << endl;
-                             //output.Print();
-                             kx_vs_ky->Fill(output(0,0), output(1,0));
-                           }*/
+                           }
 
                           }
 
@@ -1306,7 +1253,9 @@ c2->cd(1);
         X_vs_Y->SetLineColor(kBlack);
         X_vs_Y->SetMarkerColor(kBlack);
         X_vs_Y->Draw();
+
 */
+
 c2->cd(2);
 
         X_vs_Y->SetMarkerStyle(24);
@@ -1326,8 +1275,8 @@ c2->cd(2);
        kx_vs_ky->Draw("same");
 
 
-/*
 
+/*
 c2->cd(3);
         phi_pattern->SetMarkerStyle(15);
         phi_pattern->SetMarkerSize(0.3);
@@ -1338,4 +1287,3 @@ c2->cd(3);
 
 
 }
-
