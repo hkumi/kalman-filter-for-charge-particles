@@ -130,6 +130,8 @@ void KALMAN() {
      c1->Draw();
 
      TH2F *rx_vs_ry = new TH2F("rx_vs_ry", "rungex_vs_rungey", 720, 0, -3, 1000, 0, 2.0);
+     TH2F *propagatorx_vs_propagatory = new TH2F("propagatorx_vs_propagatory", "propagatorx_vs_propagatory", 720, 0, -3, 1000, 0, 2.0);
+     TH3F *F_projection = new TH3F("F_projection", "propagator_projection", 720, 5.0, -3, 100, 0, 10.0,100, -5, 10.0);
 
      Double_t Ex,Ey,Ez;              //Electric field in V/m.
      Double_t Bx,By,Bz;              // magnetic field in Tesla
@@ -195,7 +197,7 @@ cout<<endl;
           t0 = t0 + h;
           //std::cout<<x0[0]<<" "<<x0[1]<<" "<<x0[2]<<endl;
           state_vectors.push_back(x0);
-          rx_vs_ry->Fill(x0[2], x0[1]);
+          rx_vs_ry->Fill(x0[0], x0[1]);
           Energy = GetEnergy(x0[3], x0[4], x0[5]);
 
           i += 1;
@@ -236,24 +238,61 @@ cout<<endl;
             jacobian(j, i) = (dxdt_perturbed[j] - dxdt[j]) / epsilon;
         }
     }
-    jacobian.Print();
-/*
-    // Print the Jacobian matrix
-    std::cout << "Jacobian matrix:" << std::endl;
-    for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-            std::cout << jacobian(i, j) << " ";
-        }
-        std::cout << std::endl;
-    }
-*/
+    //jacobian.Print();
 
+    TMatrixD identity(6, 6);
+    identity.UnitMatrix(); // Create an identity matrix
+
+    // Calculate propagator matrix using intermediate matrices
+    // Initialize F as identity matrix
+    TMatrixD F(6,6);
+    F.UnitMatrix();
+    // Compute F1, F2, F3, F4
+    Double_t dt_1 = 1e-10;
+    TMatrixD IplusFi (6,6);
+    IplusFi.Zero();
+    TMatrixD Fi(6,6);
+
+    for (int j = 0; j < 4; j++) {
+        IplusFi = F* dt_1;
+        Fi  = (1e-10)*jacobian*IplusFi;
+        F     += Fi *((j==0 || j==3) ?  1.0/6.0 : 1.0/3.0);
+        //F.Print();
+    }
+
+    // Define matrix to hold time derivatives of state vectors
+    TMatrixD  state_dot_matrix(numDimensions,numStates-1);
+
+    // Calculate time derivatives of state vectors
+    for (int k = 0; k < numStates; k++) {
+    // Extract state vector at time t.
+        TMatrixD state_vector(6,1);
+        for (int j = 0; j < 6; j++) {
+            state_vector(j,0) = state_matrix(j,k);
+        }
+
+    // Multiply propagator matrix with state vector to get time derivative of state vector
+    TMatrixD state_dot_vector = F * state_vector;
+    propagatorx_vs_propagatory->Fill(state_dot_vector(0,0), state_dot_vector(1,0));
+    F_projection->Fill(state_dot_vector(0,0),state_dot_vector(1,0),state_dot_vector(2,0));
+    }
 
 
     // Plot the histogram
-    rx_vs_ry->SetMarkerStyle(22);
-    rx_vs_ry->SetMarkerSize(0.5);
-    rx_vs_ry->Draw();
+    c1->cd(1);
+        rx_vs_ry->Draw();
+        rx_vs_ry->SetMarkerStyle(21);
+        rx_vs_ry->SetMarkerSize(0.3);
+    c1->cd(2);
+        propagatorx_vs_propagatory->Draw();
+        propagatorx_vs_propagatory->SetMarkerStyle(21);
+        propagatorx_vs_propagatory->SetMarkerSize(0.3);
+
+    c1->cd(4);
+        F_projection->Draw();
+        F_projection->SetMarkerStyle(21);
+        F_projection->SetMarkerSize(0.3);
+
 
     return 0;
 }
