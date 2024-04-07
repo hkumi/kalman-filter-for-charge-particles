@@ -677,26 +677,26 @@ cout<<"+----------------+"<<endl;
            k1vy[i] = dydt(t[i],vx[i],vy[i],vz[i]);
            k1vz[i] = dzdt(t[i],vx[i],vy[i],vz[i]);
 
-           k2x[i] = fx(t[i]+h*0.5,vx[i]+0.5*h*k1x[i]);
-           k2y[i] = fy(t[i]+h*0.5,vy[i]+0.5*h*k1y[i]);
-           k2z[i] = fz(t[i]+h*0.5,vz[i]+0.5*h*k1z[i]);
+           k2x[i] = fx(t[i]+h*0.5,vx[i]+0.5*h*k1vx[i]);
+           k2y[i] = fy(t[i]+h*0.5,vy[i]+0.5*h*k1vy[i]);
+           k2z[i] = fz(t[i]+h*0.5,vz[i]+0.5*h*k1vz[i]);
 
            k2vx[i] = dxdt(t[i]+h*0.5,vx[i]+k1vx[i]*0.5*h,vy[i]+k1vy[i]*h*0.5,vz[i]+k1vz[i]*h*0.5);
            k2vy[i] = dydt(t[i]+h*0.5,vx[i]+k1vx[i]*h*0.5, vy[i]+k1vy[i]*h*0.5,vz[i]+k1vz[i]*h*0.5);
            k2vz[i] = dzdt(t[i]+h*0.5,vx[i]+k1vx[i]*h*0.5, vy[i]+k1vy[i]*h*0.5, vz[i]+k1vz[i]*h*0.5);
 
 
-	   k3x[i] = fx(t[i]+h*0.5,vx[i]+0.5*h*k2x[i]);
-           k3y[i] = fy(t[i]+h*0.5,vy[i]+0.5*h*k2y[i]);
-           k3z[i] = fz(t[i]+h*0.5,vz[i]+0.5*h*k2z[i]);
+	   k3x[i] = fx(t[i]+h*0.5,vx[i]+0.5*h*k2vx[i]);
+           k3y[i] = fy(t[i]+h*0.5,vy[i]+0.5*h*k2vy[i]);
+           k3z[i] = fz(t[i]+h*0.5,vz[i]+0.5*h*k2vz[i]);
 
            k3vx[i] = dxdt(t[i]+h*0.5,vx[i]+k2vx[i]*0.5*h,vy[i]+k2vy[i]*h*0.5,vz[i] + k2vz[i]*h*0.5);
            k3vy[i] = dydt(t[i]+h*0.5,vx[i]+k2vx[i]*h*0.5, vy[i]+k2vy[i]*h*0.5,vz[i]+k2vz[i]*h*0.5);
            k3vz[i] = dzdt(t[i]+h*0.5,vx[i]+k2vx[i]*h*0.5, vy[i]+k2vy[i]*h*0.5, vz[i]+k2vz[i]*h*0.5);
 
-           k4x[i] = fx(t[i]+h,vx[i]+k3x[i]*h);
-           k4y[i] = fy(t[i]+h,vy[i]+k3y[i]*h);
-           k4z[i] = fz(t[i]+h,vz[i]+k3z[i]*h);
+           k4x[i] = fx(t[i]+h,vx[i]+k3vx[i]*h);
+           k4y[i] = fy(t[i]+h,vy[i]+k3vy[i]*h);
+           k4z[i] = fz(t[i]+h,vz[i]+k3vz[i]*h);
 
            k4vx[i] = dxdt(t[i]+h,vx[i]+k3vx[i]*h,vy[i]+k3vy[i]*h,vz[i]+k3vz[i]*h);
            k4vy[i] = dydt(t[i]+h,vx[i]+k3vx[i]*h,vy[i]+k3vy[i]*h,vz[i]+k3vz[i]*h);
